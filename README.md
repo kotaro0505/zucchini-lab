@@ -1,25 +1,46 @@
 # zucchini-lab
 
-スマートフォンで遊べる試作Webゲームをまとめるリポジトリです。
+スマートフォンで遊べる試作Webゲームを、ゲームごとの独立フォルダで安全に管理・公開するゲーム工場です。
 
-## ゲーム
+## 公開中のゲーム
 
-| フォルダ | ゲーム | 公開後のURL |
+| フォルダ | ゲーム | 公開URL |
 | --- | --- | --- |
-| [`pon-rush/`](./pon-rush/) | ポン！ラッシュ | `https://<GitHubユーザー名>.github.io/zucchini-lab/pon-rush/` |
+| [`pon-rush/`](./pon-rush/) | ポン！ラッシュ | <https://kotaro0505.github.io/zucchini-lab/pon-rush/> |
 
-各ゲームは専用フォルダ内の `index.html` だけで動作する構成にします。新しいゲームを追加するときも、同じようにゲーム名のフォルダを作成します。
+`pon-rush/` の既存URLは維持します。今後のゲームも、リポジトリ直下に専用フォルダを追加して公開します。
 
-## ローカルで遊ぶ
+## 工場の構成
 
-`pon-rush/index.html` をブラウザで開いてください。外部ライブラリやビルド作業は不要です。
+```text
+zucchini-lab/
+├─ AGENTS.md       # Codex向けの分離・自動公開ルール
+├─ publish.ps1     # ゲーム単位の安全なcommit・push・Pages確認
+├─ new-game.ps1    # 上書きしない新規ゲームフォルダ作成
+├─ pon-rush/       # ポン！ラッシュ専用。中身を他ゲームと共有しない
+│  └─ index.html
+└─ <new-game>/     # 新しいゲームごとの専用フォルダ
+   └─ index.html
+```
 
-## GitHub Pages公開時の予定
+## 新しいゲームを作る
 
-1. GitHubに `zucchini-lab` リポジトリを作成する
-2. このフォルダをGitリポジトリとして初期化し、GitHubへ接続する
-3. ファイルをコミットして既定ブランチへpushする
-4. GitHubの **Settings → Pages** で、既定ブランチのルートを公開元に設定する
+```powershell
+./new-game.ps1 -Slug "pinball" -Title "クラシック・ピンボール"
+```
 
-GitHubへの接続・認証・リポジトリ作成は、ユーザーの確認後に行います。
+既存フォルダや予約名には上書きしません。作成後は、そのフォルダ内だけでゲームを実装します。
 
+## ゲームを公開する
+
+```powershell
+./publish.ps1 -Game "pinball" -Message "Add pinball game" -Paths @("pinball/index.html")
+```
+
+スクリプトは指定ゲームのフォルダ外をstageせず、`main` へのpush、GitHub Pagesビルド待機、ゲーム公開URLのHTTP 200と内容一致確認まで行います。
+
+工場設定だけを変更する場合は、既存ゲームを検証対象として明示します。
+
+```powershell
+./publish.ps1 -Factory -VerifyGame "pon-rush" -Message "Update factory settings" -Paths @("AGENTS.md", "README.md")
+```
