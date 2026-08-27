@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0d1021">
+  <title>ポン！ラッシュ</title>
+  <style>
+    :root { color-scheme: dark; --ink:#f9f7ff; --muted:#aaa8bd; --pink:#ff4fa3; --cyan:#4deeea; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; overscroll-behavior:none; }
+    body {
+      font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+      color:var(--ink); background:#0d1021; touch-action:none; user-select:none;
+    }
+    body::before {
+      content:""; position:fixed; inset:0; pointer-events:none;
+      background: radial-gradient(circle at 15% 10%, #44245c 0, transparent 38%), radial-gradient(circle at 90% 85%, #123f52 0, transparent 40%);
+    }
+    .app { position:relative; width:100%; height:100%; max-width:680px; margin:auto; padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom)); display:grid; grid-template-rows:auto 1fr; gap:12px; }
+    header { display:flex; justify-content:space-between; gap:8px; z-index:2; }
+    .stat { min-width:92px; padding:9px 13px; border:1px solid #ffffff24; border-radius:18px; background:#ffffff0d; backdrop-filter:blur(8px); }
+    .stat small { display:block; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.1em; }
+    .stat strong { display:block; margin-top:1px; font-size:24px; line-height:1; font-variant-numeric:tabular-nums; }
+    #arena { position:relative; overflow:hidden; border:1px solid #ffffff22; border-radius:28px; background:linear-gradient(145deg,#171a33cc,#111427cc); box-shadow:0 20px 60px #0008, inset 0 1px #ffffff18; }
+    .grid { position:absolute; inset:0; opacity:.17; background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px); background-size:44px 44px; mask-image:linear-gradient(to bottom,transparent,#000 30%,#000); }
+    .panel { position:absolute; inset:0; z-index:3; display:grid; place-content:center; justify-items:center; padding:28px; text-align:center; background:linear-gradient(#10132699,#101326e8); transition:.2s; }
+    .panel.hidden { opacity:0; pointer-events:none; transform:scale(1.04); }
+    .logo { margin:0; font-size:clamp(42px,12vw,72px); line-height:.95; letter-spacing:-.07em; text-shadow:4px 4px 0 #ff4fa366; }
+    .logo span { color:var(--cyan); }
+    .panel p { color:#cac8d8; line-height:1.7; margin:18px 0 22px; }
+    button { border:0; border-radius:999px; padding:15px 28px; color:#151526; background:linear-gradient(135deg,#fff,#d8fefd); font:900 17px/1 inherit; box-shadow:0 8px 0 #7ac8ca,0 14px 28px #0007; cursor:pointer; }
+    button:active { transform:translateY(5px); box-shadow:0 3px 0 #7ac8ca,0 8px 18px #0007; }
+    #target { position:absolute; z-index:2; width:84px; height:84px; display:none; border-radius:50%; background:radial-gradient(circle at 35% 28%,#fff 0 7%,#ffb9db 8%,var(--pink) 42%,#cf1974 100%); box-shadow:0 0 0 8px #ff4fa31c,0 12px 25px #0008; transform:translate(-50%,-50%); animation:pulse .55s ease-in-out infinite alternate; }
+    #target::after { content:"!"; display:grid; place-items:center; height:100%; color:#fff; font:900 34px/1 system-ui; text-shadow:0 2px 0 #a51362; }
+    @keyframes pulse { to { scale:1.08; box-shadow:0 0 0 15px #ff4fa30a,0 14px 28px #0008; } }
+    .pop { position:absolute; z-index:4; color:var(--cyan); font-weight:1000; font-size:25px; pointer-events:none; transform:translate(-50%,-50%); animation:pop .65s ease-out forwards; text-shadow:0 2px 8px #000; }
+    @keyframes pop { to { opacity:0; transform:translate(-50%,-130%) scale(1.4); } }
+    .shake { animation:shake .18s linear; }
+    @keyframes shake { 25%{translate:5px} 75%{translate:-5px} }
+    .best { margin-top:18px; color:#ffd86b; font-weight:800; min-height:1.5em; }
+    @media (max-height:560px) { .app{padding-top:8px}.stat{padding:6px 11px}.stat strong{font-size:20px}.panel p{margin:10px 0 14px}.logo{font-size:38px} }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header aria-label="ゲーム情報">
+      <div class="stat"><small>SCORE</small><strong id="score">0</strong></div>
+      <div class="stat" style="text-align:right"><small>TIME</small><strong><span id="time">20.0</span>s</strong></div>
+    </header>
+    <section id="arena" aria-label="ゲームエリア">
+      <div class="grid"></div>
+      <button id="target" aria-label="ターゲットをタップ"></button>
+      <div id="panel" class="panel">
+        <h1 class="logo">ポン！<br><span>ラッシュ</span></h1>
+        <p id="message">光るマルをタップ！<br>20秒で何点とれる？</p>
+        <button id="start">スタート</button>
+        <div id="best" class="best"></div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const arena=document.querySelector('#arena'), target=document.querySelector('#target');
+    const panel=document.querySelector('#panel'), start=document.querySelector('#start');
+    const scoreEl=document.querySelector('#score'), timeEl=document.querySelector('#time');
+    const message=document.querySelector('#message'), bestEl=document.querySelector('#best');
+    let score=0, playing=false, endAt=0, frame=0, audio;
+    const best=()=>Number(localStorage.getItem('ponRushBest')||0);
+    const showBest=()=>bestEl.textContent=best()?`ベストスコア  ${best()}`:'';
+    showBest();
+    function beep(freq=560){
+      try { audio??=new (window.AudioContext||window.webkitAudioContext)(); const o=audio.createOscillator(),g=audio.createGain(); o.frequency.value=freq; g.gain.setValueAtTime(.05,audio.currentTime); g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.08); o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime+.08); } catch(e){}
+    }
+    function moveTarget(){
+      const r=arena.getBoundingClientRect(), size=Math.max(58,84-Math.floor(score/5)*3), pad=size/2+8;
+      target.style.width=target.style.height=size+'px';
+      target.style.left=pad+Math.random()*Math.max(1,r.width-pad*2)+'px';
+      target.style.top=pad+Math.random()*Math.max(1,r.height-pad*2)+'px';
+    }
+    function begin(){
+      score=0; playing=true; endAt=performance.now()+20000; scoreEl.textContent='0'; timeEl.textContent='20.0';
+      panel.classList.add('hidden'); target.style.display='block'; moveTarget(); beep(420); tick();
+    }
+    function tick(){
+      if(!playing)return; const left=Math.max(0,endAt-performance.now()); timeEl.textContent=(left/1000).toFixed(1);
+      if(left<=0)return finish(); frame=requestAnimationFrame(tick);
+    }
+    function finish(){
+      playing=false; cancelAnimationFrame(frame); target.style.display='none'; beep(180);
+      const isBest=score>best(); if(isBest)localStorage.setItem('ponRushBest',score);
+      message.innerHTML=`スコアは <b style="color:#4deeea;font-size:1.4em">${score}</b> 点！<br>${isBest?'🎉 ベスト更新！':'もう一回いく？'}`;
+      start.textContent='もう一回'; showBest(); panel.classList.remove('hidden');
+    }
+    target.addEventListener('pointerdown',e=>{
+      if(!playing)return; e.preventDefault(); score++; scoreEl.textContent=score; beep(520+Math.min(score,20)*18);
+      const p=document.createElement('div'); p.className='pop'; p.textContent='+1'; p.style.left=target.style.left; p.style.top=target.style.top; arena.append(p); setTimeout(()=>p.remove(),650); moveTarget();
+    });
+    arena.addEventListener('pointerdown',e=>{
+      if(playing && e.target!==target){ arena.classList.remove('shake'); void arena.offsetWidth; arena.classList.add('shake'); beep(120); }
+    });
+    start.addEventListener('click',begin);
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden&&playing)finish(); });
+  </script>
+</body>
+</html>
