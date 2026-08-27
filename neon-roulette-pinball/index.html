@@ -1,0 +1,11 @@
+<!doctype html><html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#080a13"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>ネオン・ルーレット・ピンボール</title><link rel="stylesheet" href="styles.css"></head>
+<body><main id="game-shell">
+<header class="scorebar" aria-label="スコア情報"><div><small>SCORE</small><strong id="score">0000000</strong></div><div class="center-stat"><small>MULTI</small><strong id="multiplier">×1</strong></div><div class="right-stat"><small>HIGH</small><strong id="high-score">0000000</strong></div></header>
+<section id="table-wrap"><canvas id="game" width="720" height="1200" aria-label="ピンボール盤面"></canvas>
+<div id="lcd" aria-live="polite"><span id="lcd-label">NEON ROULETTE</span><strong id="lcd-main">READY</strong><span id="lcd-sub">3 TARGETS → SPIN</span></div><div id="message" aria-live="polite"></div>
+<div id="start-overlay"><div class="logo"><span>NEON</span><strong>ROULETTE</strong><em>PINBALL</em></div><p>ターゲット3枚でルーレット<br>レーンを揃えて倍率アップ</p><button id="start-button">TAP TO LAUNCH</button><small>下部左右：フリッパー　右端：プランジャー</small></div></section>
+<footer class="controls"><button id="left-control" aria-label="左フリッパー"><span>◀</span> LEFT</button><div class="balls"><small>BALL</small><strong id="balls">● ● ●</strong></div><button id="right-control" aria-label="右フリッパー">RIGHT <span>▶</span></button></footer>
+</main><script type="module" src="js/game.js"></script></body></html>
