@@ -101,20 +101,20 @@ $suffix = if ($cleanVerifyPath) { "/$cleanVerifyPath/" } else { "/" }
 $publicUrl = "https://$owner.github.io/$repo$suffix"
 $localFile = if ($cleanVerifyPath) { Join-Path $repoRoot "$cleanVerifyPath\index.html" } else { Join-Path $repoRoot "index.html" }
 if (-not (Test-Path -LiteralPath $localFile)) { throw "Verification file not found: $localFile" }
-$expected = [IO.File]::ReadAllText($localFile)
+$expected = [IO.File]::ReadAllText($localFile).Replace("`r`n", "`n")
 
 do {
     try {
         $separator = if ($publicUrl.Contains('?')) { '&' } else { '?' }
         $response = Invoke-WebRequest -Uri "$publicUrl${separator}commit=$commit" -UseBasicParsing
-        if ($response.StatusCode -eq 200 -and $response.Content -eq $expected) { break }
+        if ($response.StatusCode -eq 200 -and $response.Content.Replace("`r`n", "`n") -eq $expected) { break }
     } catch {
         $response = $null
     }
     Start-Sleep -Seconds $RetrySeconds
 } while ((Get-Date) -lt $deadline)
 
-if (-not $response -or $response.StatusCode -ne 200 -or $response.Content -ne $expected) {
+if (-not $response -or $response.StatusCode -ne 200 -or $response.Content.Replace("`r`n", "`n") -ne $expected) {
     throw "Pages built, but the latest file was not confirmed at $publicUrl before timeout."
 }
 
