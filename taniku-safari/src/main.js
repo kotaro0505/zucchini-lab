@@ -1,4 +1,4 @@
-import{Game,drawSucculent}from'./game.js?v=infinite5';
+import{Game,drawSucculent}from'./game.js?v=infinite6';
 import{AudioSystem}from'./audio.js';
 import{renderCollection,loadCollection}from'./collection.js';
 import{ScoreManager}from'./score-manager.js';
