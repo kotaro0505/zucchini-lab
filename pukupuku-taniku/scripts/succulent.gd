@@ -23,7 +23,6 @@ var style := "colorata"
 var profile: Dictionary
 var max_life_hint := 7.0
 var visual_scale := 0.18
-var wobble := 0.0
 
 func setup(species: Dictionary, seed_value: int, screen_label: Label, danger: Label) -> void:
 	data = species; rng.seed = seed_value; label = screen_label; danger_badge = danger
@@ -61,7 +60,8 @@ func _sample_life_hint() -> float:
 
 func _create_leaf_material() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new(); mat.albedo_color = Color.WHITE; mat.vertex_color_use_as_albedo = true
-	mat.roughness = float(profile.powder); mat.metallic = .10 if style.begins_with("gold_") else 0.0
+	mat.roughness = float(profile.powder); mat.metallic = .34 if style=="gold_laui" else (.10 if style.begins_with("gold_") else 0.0)
+	if style=="affinis": mat.roughness=.28;mat.metallic=.12
 	mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX; mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return mat
 
@@ -95,6 +95,10 @@ func _leaf_point(u:float,v:float,side:float)->Vector3:
 	return Vector3(x,y,u*float(profile.length))
 
 func _vertex_color(u:float,side:float)->Color:
+	if style=="laui":
+		var powder:=base_color.lightened(.14+.025*sin(u*17.0));return powder.darkened(.08) if side<0 else powder
+	if style=="gold_laui":
+		var gold:=base_color.lerp(tip_color,smoothstep(.52,.98,u)*.34).lightened(.08*sin(u*PI));return gold.darkened(.10) if side<0 else gold
 	var mix:=smoothstep(.73,.98,u); var color:=base_color.darkened(.18).lightened(float(profile.powder)*.075).lerp(tip_color.darkened(.12),mix*.86)
 	if side<0: color=color.darkened(.12)
 	if style.begins_with("gold_"): color=color.lightened(.06*sin(u*PI))
@@ -109,24 +113,29 @@ func _build_rosette(mesh:ArrayMesh,material:StandardMaterial3D)->void:
 	for ring_i in range(rings.size()):
 		var count:int=int(rings[ring_i]); var ring_t:=float(ring_i)/float(rings.size()-1)
 		for j in range(count):
-			var leaf:=MeshInstance3D.new(); leaf.mesh=mesh; leaf.material_override=material
+			var leaf:=MeshInstance3D.new(); leaf.mesh=mesh
 			var yaw:=TAU*float(j)/count+ring_i*float(profile.spiral)+rng.randf_range(-.028,.028); leaf.rotation.y=yaw
 			var radial:float=lerp(.38+float(profile.open),.028,ring_t); leaf.position=Vector3(sin(yaw)*radial,ring_t*.075-.08,cos(yaw)*radial)
 			leaf.rotation.x=lerp(-.12-float(profile.open),-float(profile.inner),ring_t)+rng.randf_range(-.025,.025)
 			var base_s:float=lerp(1.0,.43,ring_t); leaf.scale=Vector3.ONE*base_s*rng.randf_range(.975,1.025)
+			if style=="affinis":
+				var affinis_mat:=material.duplicate() as StandardMaterial3D
+				affinis_mat.albedo_color=Color("#594e68").lerp(Color("#a3df82"),pow(ring_t,2.1))
+				leaf.material_override=affinis_mat
+			else: leaf.material_override=material
 			leaf.set_meta("ring",ring_t); leaf.set_meta("phase",rng.randf_range(0,TAU)); leaf.set_meta("base_scale",base_s)
 			add_child(leaf); leaf_nodes.append(leaf)
 
 func _build_crown_bud()->void:
 	var bud:=MeshInstance3D.new(); var mesh:=SphereMesh.new(); mesh.radius=.17; mesh.height=.24; mesh.radial_segments=12; mesh.rings=6; bud.mesh=mesh
-	var mat:=StandardMaterial3D.new(); mat.albedo_color=base_color.lightened(float(profile.powder)*.11); mat.roughness=float(profile.powder); bud.material_override=mat
+	var mat:=StandardMaterial3D.new(); mat.albedo_color=Color("#96dc72") if style=="affinis" else base_color.lightened(float(profile.powder)*.11); mat.roughness=float(profile.powder); bud.material_override=mat
 	bud.position.y=.06; bud.scale=Vector3(1,.55,1); add_child(bud)
 
 func _build_golden_aura()->void:
-	var light:=OmniLight3D.new(); light.light_color=Color("#ffd783"); light.light_energy=.16; light.omni_range=2.5; add_child(light)
-	golden_particles=GPUParticles3D.new(); golden_particles.amount=9; golden_particles.lifetime=2.8; golden_particles.randomness=.82
+	var light:=OmniLight3D.new(); light.light_color=Color("#ffc83d"); light.light_energy=.30; light.omni_range=2.8; add_child(light)
+	golden_particles=GPUParticles3D.new(); golden_particles.amount=18; golden_particles.lifetime=2.5; golden_particles.randomness=.82
 	var process:=ParticleProcessMaterial.new(); process.emission_shape=ParticleProcessMaterial.EMISSION_SHAPE_SPHERE; process.emission_sphere_radius=.82
-	process.initial_velocity_min=.025; process.initial_velocity_max=.075; process.gravity=Vector3(0,.055,0); process.scale_min=.018; process.scale_max=.04; golden_particles.process_material=process
+	process.initial_velocity_min=.025; process.initial_velocity_max=.085; process.gravity=Vector3(0,.055,0); process.scale_min=.022; process.scale_max=.055; golden_particles.process_material=process
 	var quad:=QuadMesh.new(); quad.size=Vector2(.075,.075); var mat:=StandardMaterial3D.new(); mat.albedo_color=Color(1,.88,.48,.72); mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED; mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA; quad.material=mat
 	golden_particles.draw_pass_1=quad; add_child(golden_particles)
 
@@ -140,8 +149,6 @@ func simulate(delta:float)->void:
 		leaf.rotation.x=lerp(-1.18+ring_t*.12,-.12-ring_t*float(profile.inner),ease(unfold,.48))+sin(age*1.45+phase)*.010
 		var plump:float=.82+unfold*.18+min(age/48.0,.11); leaf.scale=Vector3(plump,.86+unfold*.18,.91+unfold*.12)*base_s
 	scale=Vector3.ONE*visual_scale; position+=(original_pos+target_offset-position)*min(delta*1.8,1.0)
-	var danger:=get_risk_percent()
-	if danger>64: wobble+=delta; rotation.z=sin(wobble*13.0)*.018*inverse_lerp(64,100,danger); danger_badge.visible=true if danger_badge else false
 	if age>1.8 and rng.randf()<_jelly_probability(delta): jelly()
 
 func _jelly_probability(delta:float)->float:

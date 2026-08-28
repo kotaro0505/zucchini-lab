@@ -5,9 +5,9 @@
   {"species_id":"shaviana","name_ja":"シャビアナ","rarity":"通常","spawn_weight":19.0,"base_growth_rate":1.12,"jelly_risk_curve":1.10,"visual_variant":"shaviana","golden_variant":false,"colors":["847f9b","c56f91"]},
   {"species_id":"pinwheel","name_ja":"ピンウィール","rarity":"通常","spawn_weight":20.0,"base_growth_rate":1.10,"jelly_risk_curve":1.07,"visual_variant":"pinwheel","golden_variant":false,"colors":["688e75","df7b7b"]},
   {"species_id":"juliana","name_ja":"ユリアナ","rarity":"通常","spawn_weight":17.0,"base_growth_rate":1.02,"jelly_risk_curve":0.99,"visual_variant":"juliana","golden_variant":false,"colors":["789b88","c7727d"]},
-  {"species_id":"affinis","name_ja":"アフィニス","rarity":"通常","spawn_weight":16.0,"base_growth_rate":1.07,"jelly_risk_curve":1.12,"visual_variant":"affinis","golden_variant":false,"colors":["273c36","873c49"]},
-  {"species_id":"laui","name_ja":"ラウイ","rarity":"レア","spawn_weight":4.0,"base_growth_rate":0.92,"jelly_risk_curve":0.96,"visual_variant":"laui","golden_variant":true,"colors":["829e9c","cb8793"]},
+  {"species_id":"affinis","name_ja":"アフィニス","rarity":"通常","spawn_weight":16.0,"base_growth_rate":1.07,"jelly_risk_curve":1.12,"visual_variant":"affinis","golden_variant":false,"colors":["94a39a","50495a"]},
+  {"species_id":"laui","name_ja":"ラウイ","rarity":"レア","spawn_weight":4.0,"base_growth_rate":0.92,"jelly_risk_curve":0.96,"visual_variant":"laui","golden_variant":true,"colors":["8fa6b0","9fb2b9"]},
   {"species_id":"kannte","name_ja":"カンテ","rarity":"レア","spawn_weight":3.2,"base_growth_rate":1.03,"jelly_risk_curve":1.04,"visual_variant":"kannte","golden_variant":true,"colors":["75988d","cc6876"]},
-  {"species_id":"golden_laui","name_ja":"ゴールデンラウイ","rarity":"スーパーレア","spawn_weight":0.10,"base_growth_rate":0.90,"jelly_risk_curve":1.00,"visual_variant":"gold_laui","golden_variant":true,"colors":["a87518","f1c65e"]},
+  {"species_id":"golden_laui","name_ja":"ゴールデンラウイ","rarity":"スーパーレア","spawn_weight":0.10,"base_growth_rate":0.90,"jelly_risk_curve":1.00,"visual_variant":"gold_laui","golden_variant":true,"colors":["d59612","fff0a0"]},
   {"species_id":"golden_kannte","name_ja":"ゴールデンカンテ","rarity":"スーパーレア","spawn_weight":0.07,"base_growth_rate":0.98,"jelly_risk_curve":1.02,"visual_variant":"gold_kannte","golden_variant":true,"colors":["9b6816","ebbd55"]}
 ]

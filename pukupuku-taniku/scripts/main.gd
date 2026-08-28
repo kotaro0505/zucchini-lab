@@ -14,8 +14,6 @@ var camera: Camera3D
 var world_root: Node3D
 var labels_layer: Control
 var effects_layer: Control
-var risk_label: Label
-var risk_bar: ProgressBar
 var best_label: Label
 var coin_label: Label
 var record_card: PanelContainer
@@ -126,12 +124,7 @@ func _build_ui() -> void:
 	for entry in [{"x":421,"t":"図鑑"},{"x":495,"t":"設定"}]:
 		var b:=Button.new(); b.text=entry.t; b.position=Vector2(entry.x,116); b.size=Vector2(68,73); _skin_button(b,Color("#fff0cf"),17); hud.add_child(b)
 	# lower gradient cards
-	var danger_panel:=PanelContainer.new(); danger_panel.position=Vector2(18,830); danger_panel.size=Vector2(178,118); danger_panel.add_theme_stylebox_override("panel",_box(Color("#f8e7c8"),Color("#d7ad7d"),20,4)); hud.add_child(danger_panel)
-	var danger_box:=VBoxContainer.new(); danger_box.add_theme_constant_override("separation",2); danger_panel.add_child(danger_box)
-	var danger_title:=Label.new(); danger_title.text="ジュレ危険度"; danger_title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; danger_title.add_theme_font_size_override("font_size",17); danger_title.add_theme_color_override("font_color",UI_BROWN); danger_box.add_child(danger_title)
-	risk_label=Label.new(); risk_label.text="危険  0%"; risk_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; risk_label.add_theme_font_size_override("font_size",27); risk_label.add_theme_color_override("font_color",UI_BROWN); danger_box.add_child(risk_label)
-	risk_bar=ProgressBar.new(); risk_bar.max_value=100; risk_bar.custom_minimum_size=Vector2(140,16); risk_bar.add_theme_stylebox_override("background",_box(Color("#d9bea0"),Color("#b17a50"),10,1)); risk_bar.add_theme_stylebox_override("fill",_box(Color("#f39a31"),Color("#d96822"),10,1)); risk_bar.show_percentage=false; danger_box.add_child(risk_bar)
-	var harvest:=Button.new(); harvest.text="タップで\n収穫！"; harvest.position=Vector2(204,829); harvest.size=Vector2(180,121); _skin_button(harvest,Color("#caa538"),27); harvest.mouse_filter=Control.MOUSE_FILTER_IGNORE; hud.add_child(harvest)
+	var harvest:=Button.new(); harvest.text="タップで 収穫！"; harvest.position=Vector2(24,829); harvest.size=Vector2(360,121); _skin_button(harvest,Color("#caa538"),27); harvest.mouse_filter=Control.MOUSE_FILTER_IGNORE; hud.add_child(harvest)
 	record_card=PanelContainer.new(); record_card.position=Vector2(394,816); record_card.size=Vector2(164,134); record_card.add_theme_stylebox_override("panel",_box(Color("#674135"),Color("#f4d36e"),18,3)); record_card.visible=false; hud.add_child(record_card)
 	record_text=Label.new(); record_text.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; record_text.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; record_text.add_theme_font_size_override("font_size",19); record_text.add_theme_color_override("font_color",Color.WHITE); record_card.add_child(record_text)
 	var nav:=HBoxContainer.new(); nav.position=Vector2(23,957); nav.size=Vector2(530,80); nav.add_theme_constant_override("separation",4); hud.add_child(nav)
@@ -158,9 +151,8 @@ func spawn_plant(force_golden := false) -> void:
 	else: chosen=_weighted_species()
 	var pos:=_find_spawn_position()
 	var label:=_plant_label(); labels_layer.add_child(label)
-	var danger:=_danger_badge(); labels_layer.add_child(danger)
 	var p:=SucculentClass.new() as Succulent
-	p.original_pos=pos; p.position=pos; world_root.add_child(p); p.setup(chosen,rng.randi(),label,danger)
+	p.original_pos=pos; p.position=pos; world_root.add_child(p); p.setup(chosen,rng.randi(),label,null)
 	p.harvested.connect(_on_harvested); p.jellied.connect(_on_jellied)
 	plants.append(p)
 
@@ -186,15 +178,11 @@ func _find_spawn_position()->Vector3:
 func _plant_label()->Label:
 	var l:=Label.new(); l.text="1.6 cm"; l.size=Vector2(92,34); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",17); l.add_theme_color_override("font_color",Color.WHITE); l.add_theme_stylebox_override("normal",_box(Color(0.14,0.08,0.05,.92),Color("#f4e1be"),11,2)); l.mouse_filter=Control.MOUSE_FILTER_IGNORE; return l
 
-func _danger_badge()->Label:
-	var l:=Label.new(); l.text="!"; l.size=Vector2(31,31); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",20); l.add_theme_color_override("font_color",Color.WHITE); l.add_theme_stylebox_override("normal",_box(Color("#e94435"),Color.WHITE,16,2)); l.visible=false; l.mouse_filter=Control.MOUSE_FILTER_IGNORE; return l
-
 func _process(delta:float)->void:
 	for p in plants:
 		if is_instance_valid(p): p.simulate(delta)
 	_resolve_crowding(delta)
 	_update_labels()
-	_update_risk()
 	if spawn_queue>0:
 		spawn_timer-=delta
 		if spawn_timer<=0: spawn_queue-=1; spawn_plant(); spawn_timer=rng.randf_range(.35,.9)
@@ -227,12 +215,6 @@ func _update_labels()->void:
 			if r.intersects(other):r.position.y=other.position.y-37
 		occupied.append(r)
 		p.label.position=r.position; p.label.text="%.1f cm"%p.diameter_cm; p.label.visible=p.state=="growing"
-		p.danger_badge.position=r.position+Vector2(86,-4)
-
-func _update_risk()->void:
-	var max_risk:=0.0
-	for p in plants: if is_instance_valid(p) and p.state=="growing":max_risk=max(max_risk,p.get_risk_percent())
-	risk_label.text="危険  %d%%"%int(max_risk);risk_bar.value=max_risk
 
 func _unhandled_input(event:InputEvent)->void:
 	var pressed: bool = event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT
@@ -266,7 +248,7 @@ func _on_jellied(p:Succulent)->void:
 func _cleanup_later(p:Succulent,delay:float)->void:
 	plants.erase(p);spawn_queue+=1;spawn_timer=rng.randf_range(.35,.85)
 	await get_tree().create_timer(delay).timeout
-	if is_instance_valid(p):p.label.queue_free();p.danger_badge.queue_free();p.queue_free()
+	if is_instance_valid(p):p.label.queue_free();p.queue_free()
 
 func _show_float(p:Succulent,text:String,color:Color)->void:
 	var l:=Label.new();l.text=text;l.size=Vector2(230,90);l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER;l.add_theme_font_size_override("font_size",24);l.add_theme_color_override("font_color",color);l.add_theme_color_override("font_outline_color",UI_BROWN);l.add_theme_constant_override("outline_size",7);l.position=camera.unproject_position(p.global_position)-Vector2(115,40);effects_layer.add_child(l)
