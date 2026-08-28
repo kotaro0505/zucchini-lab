@@ -1,4 +1,4 @@
-import{Game,drawSucculent}from'./game.js?v=drive3';
+import{Game,drawSucculent}from'./game.js?v=drive4';
 import{AudioSystem}from'./audio.js';
 import{renderCollection,loadCollection}from'./collection.js';
 import{ScoreManager}from'./score-manager.js';
