@@ -1,0 +1,23 @@
+[application]
+config/name="ぷくぷく多肉"
+run/main_scene="res://main.tscn"
+
+[display]
+window/size/viewport_width=576
+window/size/viewport_height=1024
+window/size/window_width_override=576
+window/size/window_height_override=1024
+window/stretch/mode="canvas_items"
+window/handheld/orientation=1
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.82, 0.78, 0.63, 1)
+
+[input]
+harvest={"deadzone":0.5,"events":[Object(InputEventMouseButton,"button_index":1,"pressed":true)]}
+
+[audio]
+driver/enable_input=false
