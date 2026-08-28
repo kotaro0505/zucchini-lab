@@ -47,7 +47,7 @@ export class Game{
   collect(e){const s=e.data;this.score+=s.score;this.haul[s.id]=(this.haul[s.id]||0)+1;if(s.rarity!=='Normal'){saveFind(s.id);this.rare++}const kind=s.isBig?'big':s.rarity==='Normal'?'normal':'rare';this.audio.get(kind);this.ui.toast(s.isBig?'BIG LAUI GET!':s.rarity==='Normal'?`GET +${s.score}`:`${s.rarity.toUpperCase()}! +${s.score}`,kind);for(let i=0;i<(s.isBig?40:18);i++)this.particles.push({x:this.w/2+e.x*this.w*.35,y:this.h*.72,vx:(Math.random()-.5)*200,vy:-50-Math.random()*150,life:.5+Math.random()*.55,color:s.palette[i%3]})}
   crash(){this.running=false;this.audio.get('crash');this.ui.toast('CRASH!','big');setTimeout(()=>this.ui.finish(this),700)}
   project(e){const q=e.z*e.z;return{x:this.w/2+e.x*lerp(this.w*.05,this.w*.63,q),y:lerp(this.h*.315,this.h*.91,q),scale:lerp(.1,1.22,q)}}
-  draw(){const c=this.c,w=this.w,h=this.h;c.clearRect(0,0,w,h);this.drawWorld(c,w,h);for(const e of[...(this.entities||[])].sort((a,b)=>a.z-b.z))this.entity(c,e);this.drawDust(c);this.drawJeep(c,w,h)}
+  draw(){const c=this.c,w=this.w,h=this.h;c.clearRect(0,0,w,h);this.drawWorld(c,w,h);for(const e of[...(this.entities||[])].sort((a,b)=>a.z-b.z))this.entity(c,e);this.drawDust(c);if(this.running)this.drawJeep(c,w,h)}
   drawWorld(c,w,h){
     const bg=this.assets.background;
     if(bg.complete&&bg.naturalWidth){const cover=Math.max(w/bg.width,h/bg.height),dw=bg.width*cover,dh=bg.height*cover,pan=this.playerX*w*.018;c.drawImage(bg,(w-dw)/2-pan,(h-dh)/2,dw,dh)}
