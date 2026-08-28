@@ -4,7 +4,7 @@ export const W=800,H=1200;
 export const table={gravity:1180,ballRadius:14,maxSpeed:1850,restitution:.7,friction:.9985,drainY:1176};
 
 export const rewards=[
- {id:'JACKPOT',label:'JACKPOT 30K',color:'#ffd56a'},
+ {id:'JACKPOT',label:'JACKPOT COIN RAIN',color:'#ffd56a'},
  {id:'MULTI',label:'2× MULTIPLIER',color:'#4ef6ff'},
  {id:'FRENZY',label:'BUMPER FRENZY',color:'#ff4cab'},
  {id:'SAVE',label:'BALL SAVE',color:'#8dffb0'},

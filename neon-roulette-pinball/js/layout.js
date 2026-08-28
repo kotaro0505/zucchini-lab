@@ -13,10 +13,9 @@ export const targets=[
 
 export const lanes=[{id:'L',x:180},{id:'C',x:400},{id:'R',x:620}];
 
-export const posts=[
- {x:104,y:918,r:19},{x:696,y:918,r:19},
- {x:158,y:1008,r:14},{x:642,y:1008,r:14}
-];
+// Collision posts were removed from the lower return lanes. Their old gaps overlapped
+// the ball diameter and could form hard traps against the rails and shooter divider.
+export const posts=[];
 
 export const walls=[
  // Cabinet and shooter lane.
@@ -25,15 +24,26 @@ export const walls=[
  [{x:40,y:1035},{x:120,y:1114}],[{x:724,y:205},{x:724,y:1054}],
  // Upper nest: angled guides recycle downward shots back toward the 500 bank.
  [{x:120,y:470},{x:180,y:388}],[{x:680,y:470},{x:620,y:388}],
- [{x:146,y:452},{x:242,y:510}],[{x:654,y:452},{x:558,y:510}],
+ [{x:190,y:430},{x:280,y:500}],[{x:610,y:430},{x:520,y:500}],
  [{x:118,y:188},{x:178,y:214}],[{x:682,y:188},{x:622,y:214}],
  // Slings and broad inlane returns.
  [{x:94,y:724},{x:226,y:806}],[{x:226,y:806},{x:146,y:884}],
  [{x:706,y:724},{x:574,y:806}],[{x:574,y:806},{x:654,y:884}],
- [{x:112,y:866},{x:190,y:928}],[{x:190,y:928},{x:150,y:982}],
- [{x:688,y:866},{x:610,y:928}],[{x:610,y:928},{x:650,y:982}],
+ [{x:102,y:854},{x:190,y:928}],[{x:190,y:928},{x:150,y:982}],
+ [{x:698,y:854},{x:610,y:928}],[{x:610,y:928},{x:650,y:982}],
  // Apron rails leave a fair but readable center drain and soften outlane exits.
  [{x:90,y:980},{x:150,y:1062}],[{x:710,y:980},{x:650,y:1062}]
+];
+
+// Safety zones are a last-resort classic ball-search. They only activate after the
+// ball has remained almost still or confined for several seconds.
+export const escapeZones=[
+ {id:'upper-left',x1:42,y1:310,x2:300,y2:575,vx:330,vy:-300},
+ {id:'upper-right',x1:500,y1:310,x2:722,y2:575,vx:-330,vy:-300},
+ {id:'upper-lanes',x1:42,y1:45,x2:722,y2:310,vx:290,vy:-250},
+ {id:'center',x1:180,y1:545,x2:620,y2:850,vx:300,vy:-360},
+ {id:'lower-left',x1:42,y1:800,x2:220,y2:1060,vx:390,vy:-560},
+ {id:'lower-right',x1:580,y1:800,x2:722,y2:1060,vx:-390,vy:-560}
 ];
 
 export const flipperSpecs={
