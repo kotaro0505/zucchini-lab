@@ -1,4 +1,4 @@
-import{Game,drawSucculent}from'./game.js';
+import{Game,drawSucculent}from'./game.js?v=visual2';
 import{AudioSystem}from'./audio.js';
 import{renderCollection,loadCollection}from'./collection.js';
 const $=s=>document.querySelector(s),screens=[...document.querySelectorAll('.screen')],show=id=>screens.forEach(s=>s.classList.toggle('active',s.id===id));
