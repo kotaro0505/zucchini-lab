@@ -38,7 +38,7 @@ func _ready() -> void:
 	_layout()
 
 func _load_species() -> void:
-	var raw := FileAccess.get_file_as_string("res://data/species.json")
+	var raw := FileAccess.get_file_as_string("res://data/species-v2.json")
 	species = JSON.parse_string(raw)
 
 func _load_save() -> void:
@@ -64,61 +64,79 @@ func _build_world() -> void:
 	var pot := MeshInstance3D.new(); var pot_mesh := CylinderMesh.new()
 	pot_mesh.top_radius = 5.18; pot_mesh.bottom_radius = 4.55; pot_mesh.height = 1.25; pot_mesh.radial_segments = 64
 	pot.mesh = pot_mesh; pot.position.y = -0.68
-	pot.material_override = _mat(Color("#a75838"),0.67,0.0)
+	pot.material_override = _terracotta_material(false)
 	world_root.add_child(pot)
 	var rim := MeshInstance3D.new(); var torus := TorusMesh.new()
 	torus.inner_radius = 4.72; torus.outer_radius = 5.28; torus.rings = 64; torus.ring_segments = 12
-	rim.mesh = torus; rim.position.y = 0.01; rim.material_override = _mat(Color("#bd6d48"),0.58,0.0); world_root.add_child(rim)
+	rim.mesh = torus; rim.position.y = 0.01; rim.material_override = _terracotta_material(true); world_root.add_child(rim)
 	var soil := MeshInstance3D.new(); var soil_mesh := CylinderMesh.new()
 	soil_mesh.top_radius=4.74; soil_mesh.bottom_radius=4.7; soil_mesh.height=0.18; soil_mesh.radial_segments=64
-	soil.mesh=soil_mesh; soil.position.y=-0.08; soil.material_override=_mat(Color("#4c291d"),0.98,0.0); world_root.add_child(soil)
+	soil.mesh=soil_mesh; soil.position.y=-0.08; soil.material_override=_soil_material(); world_root.add_child(soil)
 	# deterministic pebble layer, real geometry but lightweight
-	var pebble_mesh := SphereMesh.new(); pebble_mesh.radius=0.075; pebble_mesh.height=0.09; pebble_mesh.radial_segments=5; pebble_mesh.rings=3
-	var multi := MultiMesh.new(); multi.transform_format=MultiMesh.TRANSFORM_3D; multi.use_colors=true; multi.instance_count=240; multi.mesh=pebble_mesh
+	var pebble_mesh := SphereMesh.new(); pebble_mesh.radius=0.082; pebble_mesh.height=0.105; pebble_mesh.radial_segments=7; pebble_mesh.rings=4
+	var multi := MultiMesh.new(); multi.transform_format=MultiMesh.TRANSFORM_3D; multi.use_colors=true; multi.instance_count=330; multi.mesh=pebble_mesh
 	for i in range(multi.instance_count):
 		var a:=rng.randf_range(0,TAU); var r:=sqrt(rng.randf())*4.55
-		var t:=Transform3D(Basis().scaled(Vector3(rng.randf_range(.55,1.4),rng.randf_range(.45,.9),rng.randf_range(.55,1.35))),Vector3(cos(a)*r,0.035,sin(a)*r))
-		multi.set_instance_transform(i,t); multi.set_instance_color(i,Color.from_hsv(rng.randf_range(.04,.095),rng.randf_range(.25,.55),rng.randf_range(.32,.72)))
+		var t:=Transform3D(Basis().rotated(Vector3.UP,rng.randf_range(0,TAU)).scaled(Vector3(rng.randf_range(.5,1.65),rng.randf_range(.4,1.05),rng.randf_range(.5,1.5))),Vector3(cos(a)*r,0.035,sin(a)*r))
+		multi.set_instance_transform(i,t); multi.set_instance_color(i,Color.from_hsv(rng.randf_range(.035,.10),rng.randf_range(.28,.62),rng.randf_range(.25,.64)))
 	var pebble_mat:=_mat(Color("#b48661"),0.94,0.0);pebble_mat.vertex_color_use_as_albedo=true
 	var pebbles:=MultiMeshInstance3D.new(); pebbles.multimesh=multi; pebbles.material_override=pebble_mat; world_root.add_child(pebbles)
 	var env_node:=WorldEnvironment.new(); var env:=Environment.new()
-	env.background_mode=Environment.BG_COLOR; env.background_color=Color("#cfd6ad"); env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#dbcbb1"); env.ambient_light_energy=0.28
+	env.background_mode=Environment.BG_COLOR; env.background_color=Color("#cfd6ad"); env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#b9ac98"); env.ambient_light_energy=0.18
 	env.tonemap_mode=Environment.TONE_MAPPER_FILMIC
 	env_node.environment=env; world_root.add_child(env_node)
-	var sun:=DirectionalLight3D.new(); sun.rotation_degrees=Vector3(-48,-32,-12); sun.light_color=Color("#ffe3aa"); sun.light_energy=0.72; sun.shadow_enabled=true; sun.directional_shadow_max_distance=24; world_root.add_child(sun)
-	var fill:=OmniLight3D.new(); fill.position=Vector3(-3,5,3); fill.light_color=Color("#cbe5cc"); fill.light_energy=0.32; fill.omni_range=10; fill.shadow_enabled=false; world_root.add_child(fill)
+	var sun:=DirectionalLight3D.new(); sun.rotation_degrees=Vector3(-48,-32,-12); sun.light_color=Color("#ffe3aa"); sun.light_energy=0.40; sun.shadow_enabled=true; sun.directional_shadow_max_distance=24; sun.shadow_blur=2.5; world_root.add_child(sun)
+	var fill:=OmniLight3D.new(); fill.position=Vector3(-3,5,3); fill.light_color=Color("#cbe5cc"); fill.light_energy=0.10; fill.omni_range=10; fill.shadow_enabled=false; world_root.add_child(fill)
 	camera=Camera3D.new(); camera.position=Vector3(0,10.4,9.2); camera.look_at_from_position(camera.position,Vector3(0,0,-0.25)); camera.fov=39.0; camera.current=true; world_root.add_child(camera)
 	world_root.position=Vector3(0,-0.35,0.35)
 
 func _mat(color: Color, rough: float, metallic: float) -> StandardMaterial3D:
 	var m:=StandardMaterial3D.new(); m.albedo_color=color; m.roughness=rough; m.metallic=metallic; return m
 
+func _terracotta_material(is_rim: bool) -> ShaderMaterial:
+	var shader:=Shader.new()
+	shader.code="""shader_type spatial;
+render_mode specular_schlick_ggx;
+uniform vec3 clay_dark : source_color = vec3(0.31,0.105,0.055);
+uniform vec3 clay_light : source_color = vec3(0.58,0.245,0.12);
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+void fragment(){float grain=hash(floor(UV*vec2(180.0,90.0)));float bands=sin(UV.y*55.0+sin(UV.x*19.0))*0.5+0.5;float wear=smoothstep(0.40,0.92,grain)*0.13;ALBEDO=mix(clay_dark,clay_light,0.46+bands*0.12+wear);ROUGHNESS=0.78;SPECULAR=0.25;}"""
+	var material:=ShaderMaterial.new();material.shader=shader
+	if is_rim: material.set_shader_parameter("clay_light",Color("#a94f2c"));material.set_shader_parameter("clay_dark",Color("#572315"))
+	return material
+
+func _soil_material()->ShaderMaterial:
+	var shader:=Shader.new();shader.code="""shader_type spatial;
+void fragment(){float n=sin(UV.x*93.0+sin(UV.y*37.0)*2.4)*sin(UV.y*81.0+sin(UV.x*29.0)*2.0);n=n*0.5+0.5;float broad=sin(UV.x*19.0+UV.y*23.0)*0.5+0.5;vec3 humus=vec3(0.085,0.031,0.017);vec3 akadama=vec3(0.25,0.085,0.035);ALBEDO=mix(humus,akadama,n*0.18+broad*0.08);ROUGHNESS=0.98;SPECULAR=0.06;}""";var material:=ShaderMaterial.new();material.shader=shader;return material
+
 func _build_ui() -> void:
 	var ui:=CanvasLayer.new(); ui.layer=10; add_child(ui)
 	labels_layer=Control.new(); labels_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); labels_layer.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(labels_layer)
-	var hud:=Control.new(); hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); hud.mouse_filter=Control.MOUSE_FILTER_PASS; ui.add_child(hud)
+	var hud:=Control.new(); hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); hud.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(hud)
 	effects_layer=Control.new(); effects_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); effects_layer.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(effects_layer)
+	var game_theme:=Theme.new();game_theme.default_font=load("res://assets/fonts/ZenMaruGothic-Bold.ttf") as Font;game_theme.default_font_size=16
+	labels_layer.theme=game_theme;hud.theme=game_theme;effects_layer.theme=game_theme
 	# logo
 	var logo:=Label.new(); logo.text="ぷくぷく\n多 肉"; logo.position=Vector2(26,34); logo.size=Vector2(190,105); logo.add_theme_font_size_override("font_size",31); logo.add_theme_color_override("font_color",Color("#fff2d3")); logo.add_theme_color_override("font_outline_color",UI_BROWN); logo.add_theme_constant_override("outline_size",8); logo.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; hud.add_child(logo)
 	var ribbon:=Label.new(); ribbon.text=" PUKU PUKU TANIKU "; ribbon.position=Vector2(56,126); ribbon.add_theme_font_size_override("font_size",11); ribbon.add_theme_color_override("font_color",Color.WHITE); ribbon.add_theme_stylebox_override("normal",_box(Color("#d99a3c"),Color("#7b4a25"),12,2)); hud.add_child(ribbon)
 	var best_panel:=PanelContainer.new(); best_panel.position=Vector2(220,54); best_panel.size=Vector2(168,66); best_panel.add_theme_stylebox_override("panel",_box(Color("#47261b"),Color("#f5c985"),16,2)); hud.add_child(best_panel)
-	best_label=Label.new(); best_label.text="♛  ベスト記録\n     0.0 cm"; best_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; best_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; best_label.add_theme_font_size_override("font_size",17); best_label.add_theme_color_override("font_color",Color.WHITE); best_panel.add_child(best_label)
+	best_label=Label.new(); best_label.text="最高  ベスト記録\n     0.0 cm"; best_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; best_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; best_label.add_theme_font_size_override("font_size",17); best_label.add_theme_color_override("font_color",Color.WHITE); best_panel.add_child(best_label)
 	var coin_panel:=PanelContainer.new(); coin_panel.position=Vector2(398,54); coin_panel.size=Vector2(153,53); coin_panel.add_theme_stylebox_override("panel",_box(Color("#55301d"),Color("#f1d19c"),22,2)); hud.add_child(coin_panel)
-	coin_label=Label.new(); coin_label.text=" 🟡  %s  ＋" % _comma(coins); coin_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; coin_label.add_theme_font_size_override("font_size",20); coin_label.add_theme_color_override("font_color",Color.WHITE); coin_panel.add_child(coin_label)
-	for entry in [{"x":421,"t":"▣\n図鑑"},{"x":495,"t":"⚙\n設定"}]:
+	coin_label=Label.new(); coin_label.text=" ●  %s  ＋" % _comma(coins); coin_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; coin_label.add_theme_font_size_override("font_size",20); coin_label.add_theme_color_override("font_color",Color("#ffd85b")); coin_panel.add_child(coin_label)
+	for entry in [{"x":421,"t":"図鑑"},{"x":495,"t":"設定"}]:
 		var b:=Button.new(); b.text=entry.t; b.position=Vector2(entry.x,116); b.size=Vector2(68,73); _skin_button(b,Color("#fff0cf"),17); hud.add_child(b)
 	# lower gradient cards
 	var danger_panel:=PanelContainer.new(); danger_panel.position=Vector2(18,830); danger_panel.size=Vector2(178,118); danger_panel.add_theme_stylebox_override("panel",_box(Color("#f8e7c8"),Color("#d7ad7d"),20,4)); hud.add_child(danger_panel)
 	var danger_box:=VBoxContainer.new(); danger_box.add_theme_constant_override("separation",2); danger_panel.add_child(danger_box)
 	var danger_title:=Label.new(); danger_title.text="ジュレ危険度"; danger_title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; danger_title.add_theme_font_size_override("font_size",17); danger_title.add_theme_color_override("font_color",UI_BROWN); danger_box.add_child(danger_title)
-	risk_label=Label.new(); risk_label.text="💧  0%"; risk_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; risk_label.add_theme_font_size_override("font_size",29); risk_label.add_theme_color_override("font_color",UI_BROWN); danger_box.add_child(risk_label)
+	risk_label=Label.new(); risk_label.text="危険  0%"; risk_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; risk_label.add_theme_font_size_override("font_size",27); risk_label.add_theme_color_override("font_color",UI_BROWN); danger_box.add_child(risk_label)
 	risk_bar=ProgressBar.new(); risk_bar.max_value=100; risk_bar.custom_minimum_size=Vector2(140,16); risk_bar.add_theme_stylebox_override("background",_box(Color("#d9bea0"),Color("#b17a50"),10,1)); risk_bar.add_theme_stylebox_override("fill",_box(Color("#f39a31"),Color("#d96822"),10,1)); risk_bar.show_percentage=false; danger_box.add_child(risk_bar)
 	var harvest:=Button.new(); harvest.text="タップで\n収穫！"; harvest.position=Vector2(204,829); harvest.size=Vector2(180,121); _skin_button(harvest,Color("#caa538"),27); harvest.mouse_filter=Control.MOUSE_FILTER_IGNORE; hud.add_child(harvest)
 	record_card=PanelContainer.new(); record_card.position=Vector2(394,816); record_card.size=Vector2(164,134); record_card.add_theme_stylebox_override("panel",_box(Color("#674135"),Color("#f4d36e"),18,3)); record_card.visible=false; hud.add_child(record_card)
 	record_text=Label.new(); record_text.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; record_text.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; record_text.add_theme_font_size_override("font_size",19); record_text.add_theme_color_override("font_color",Color.WHITE); record_card.add_child(record_text)
 	var nav:=HBoxContainer.new(); nav.position=Vector2(23,957); nav.size=Vector2(530,80); nav.add_theme_constant_override("separation",4); hud.add_child(nav)
-	for item in ["▤\n図鑑","🏡\nホーム","▥\nマーケット"]:
-		var b:=Button.new(); b.text=item; b.custom_minimum_size=Vector2(174,76); _skin_button(b,Color("#6d472d") if item!="🏡\nホーム" else Color("#fff0cf"),18); nav.add_child(b)
+	for item in ["図鑑","ホーム","マーケット"]:
+		var b:=Button.new(); b.text=item; b.custom_minimum_size=Vector2(174,76); _skin_button(b,Color("#6d472d") if item!="ホーム" else Color("#fff0cf"),18); nav.add_child(b)
 	_update_best_ui()
 
 func _box(bg: Color, border: Color, radius: int, width: int) -> StyleBoxFlat:
@@ -136,7 +154,7 @@ func _layout() -> void:
 func spawn_plant(force_golden := false) -> void:
 	var chosen:Dictionary
 	if force_golden:
-		chosen=species[7]; forced_golden_done=true
+		chosen=species[9]; forced_golden_done=true
 	else: chosen=_weighted_species()
 	var pos:=_find_spawn_position()
 	var label:=_plant_label(); labels_layer.add_child(label)
@@ -214,7 +232,7 @@ func _update_labels()->void:
 func _update_risk()->void:
 	var max_risk:=0.0
 	for p in plants: if is_instance_valid(p) and p.state=="growing":max_risk=max(max_risk,p.get_risk_percent())
-	risk_label.text="💧  %d%%"%int(max_risk);risk_bar.value=max_risk
+	risk_label.text="危険  %d%%"%int(max_risk);risk_bar.value=max_risk
 
 func _unhandled_input(event:InputEvent)->void:
 	var pressed: bool = event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT
@@ -234,7 +252,7 @@ func _unhandled_input(event:InputEvent)->void:
 func _on_harvested(p:Succulent)->void:
 	var old:=float(bests.get(p.data.species_id,0.0));var is_record:=p.diameter_cm>old
 	if is_record:bests[p.data.species_id]=p.diameter_cm
-	var reward:=int(p.diameter_cm*11.0)*(4 if str(p.data.rarity)=="超レア" else 1);coins+=reward;_save();_update_best_ui();coin_label.text=" 🟡  %s  ＋"%_comma(coins)
+	var reward:=int(p.diameter_cm*11.0)*(4 if str(p.data.rarity)=="スーパーレア" else 1);coins+=reward;_save();_update_best_ui();coin_label.text=" ●  %s  ＋"%_comma(coins)
 	_show_float(p,"GET!\n%s  %.1fcm"%[p.data.name_ja,p.diameter_cm],Color("#fff3a2"))
 	if is_record:_show_record(p,reward)
 	var tween:=create_tween().set_parallel();tween.tween_property(p,"position:y",p.position.y+2.0,.42).set_trans(Tween.TRANS_BACK);tween.tween_property(p,"scale",p.scale*1.2,.22);tween.chain().tween_property(p,"scale",Vector3.ONE*0.01,.24)
@@ -255,13 +273,13 @@ func _show_float(p:Succulent,text:String,color:Color)->void:
 	var tw:=create_tween().set_parallel();tw.tween_property(l,"position:y",l.position.y-85,.62).set_trans(Tween.TRANS_BACK);tw.tween_property(l,"modulate:a",0.0,.62).set_delay(.18);tw.chain().tween_callback(l.queue_free)
 
 func _show_record(p:Succulent,reward:int)->void:
-	record_text.text="収穫記録更新！\nNEW RECORD\n%.1f cm\n🟡 +%d"%[p.diameter_cm,reward];record_card.visible=true;record_card.scale=Vector2(.72,.72);record_card.pivot_offset=record_card.size/2
+	record_text.text="収穫記録更新！\nNEW RECORD\n%.1f cm\nコイン +%d"%[p.diameter_cm,reward];record_card.visible=true;record_card.scale=Vector2(.72,.72);record_card.pivot_offset=record_card.size/2
 	var tw:=create_tween();tw.tween_property(record_card,"scale",Vector2.ONE,.24).set_trans(Tween.TRANS_BACK);tw.tween_interval(2.2);tw.tween_property(record_card,"modulate:a",0.0,.25);tw.tween_callback(func():record_card.visible=false;record_card.modulate.a=1.0)
 
 func _update_best_ui()->void:
 	var top:=0.0
 	for v in bests.values():top=max(top,float(v))
-	best_label.text="♛  ベスト記録\n     %.1f cm"%top
+	best_label.text="最高  ベスト記録\n     %.1f cm"%top
 
 func _comma(value:int)->String:
 	var s:=str(value);var out:="";var count:=0

@@ -1,10 +1,5 @@
-[
-  {"species_id":"kannte","name_ja":"カンテ","rarity":"ノーマル","spawn_weight":28.0,"base_growth_rate":1.03,"jelly_risk_curve":1.04,"visual_variant":"broad_blue","golden_variant":true,"colors":["b8cfad","e7919c"]},
-  {"species_id":"laui","name_ja":"ラウイ","rarity":"レア","spawn_weight":20.0,"base_growth_rate":0.92,"jelly_risk_curve":0.96,"visual_variant":"round_powder","golden_variant":true,"colors":["a8c9c3","eda0a8"]},
-  {"species_id":"colorata","name_ja":"コロラータ","rarity":"ノーマル","spawn_weight":25.0,"base_growth_rate":1.08,"jelly_risk_curve":1.08,"visual_variant":"pointed_pink","golden_variant":false,"colors":["afcda4","ef7987"]},
-  {"species_id":"subsessilis","name_ja":"サブセシリス","rarity":"ノーマル","spawn_weight":18.0,"base_growth_rate":1.14,"jelly_risk_curve":1.13,"visual_variant":"slender_lilac","golden_variant":false,"colors":["aa9bc6","e6a6c7"]},
-  {"species_id":"albicans","name_ja":"アルビカンス","rarity":"超レア","spawn_weight":7.5,"base_growth_rate":0.86,"jelly_risk_curve":0.90,"visual_variant":"compact_white","golden_variant":false,"colors":["d6ddc8","f0b8a0"]},
-  {"species_id":"agavoides","name_ja":"アガボイデス","rarity":"レア","spawn_weight":12.0,"base_growth_rate":1.10,"jelly_risk_curve":1.10,"visual_variant":"sharp_green","golden_variant":false,"colors":["a9cc7f","e74f62"]},
-  {"species_id":"golden_kannte","name_ja":"ゴールデンカンテ","rarity":"超レア","spawn_weight":0.34,"base_growth_rate":0.98,"jelly_risk_curve":1.02,"visual_variant":"gold_broad","golden_variant":true,"colors":["e5b642","fff0a0"]},
-  {"species_id":"golden_laui","name_ja":"ゴールデンラウイ","rarity":"超レア","spawn_weight":0.22,"base_growth_rate":0.90,"jelly_risk_curve":1.00,"visual_variant":"gold_round","golden_variant":true,"colors":["d9a52e","fff1a2"]}
-]
+{
+  "deprecated": true,
+  "source": "res://data/species-v2.json",
+  "note": "11品種の現行データはspecies-v2.jsonを使用します。"
+}
