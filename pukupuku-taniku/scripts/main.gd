@@ -1,7 +1,7 @@
 extends Node
 
 const SucculentClass = preload("res://scripts/succulent.gd")
-const TARGET_COUNT := 10
+const TARGET_COUNT := 1
 const POT_RADIUS := 4.35
 const UI_CREAM := Color("#fff1d2")
 const UI_BROWN := Color("#4a2618")
@@ -39,7 +39,7 @@ func _load_species() -> void:
 	var raw := FileAccess.get_file_as_string("res://data/species-v2.json")
 	var all_species: Array = JSON.parse_string(raw)
 	for entry in all_species:
-		if str(entry.visual_variant) in ["laui", "gold_laui", "affinis"]:
+		if str(entry.visual_variant) == "laui":
 			species.append(entry)
 
 func _load_save() -> void:
@@ -172,6 +172,7 @@ func _weighted_species()->Dictionary:
 	return species[0]
 
 func _find_spawn_position()->Vector3:
+	if plants.is_empty(): return Vector3(0,0.08,0)
 	var best:=Vector3.ZERO; var best_dist:=-1.0
 	for attempt in range(32):
 		var a:=rng.randf_range(0,TAU); var r:=sqrt(rng.randf())*3.48; var p:=Vector3(cos(a)*r,0.08,sin(a)*r)
