@@ -37,7 +37,10 @@ func _ready() -> void:
 
 func _load_species() -> void:
 	var raw := FileAccess.get_file_as_string("res://data/species-v2.json")
-	species = JSON.parse_string(raw)
+	var all_species: Array = JSON.parse_string(raw)
+	for entry in all_species:
+		if str(entry.visual_variant) in ["laui", "gold_laui", "affinis"]:
+			species.append(entry)
 
 func _load_save() -> void:
 	if FileAccess.file_exists("user://records.json"):
@@ -147,7 +150,10 @@ func _layout() -> void:
 func spawn_plant(force_golden := false) -> void:
 	var chosen:Dictionary
 	if force_golden:
-		chosen=species[9]; forced_golden_done=true
+		for entry in species:
+			if str(entry.visual_variant) == "gold_laui": chosen = entry
+		if chosen.is_empty(): chosen = species[0]
+		forced_golden_done=true
 	else: chosen=_weighted_species()
 	var pos:=_find_spawn_position()
 	var label:=_plant_label(); labels_layer.add_child(label)
@@ -168,7 +174,7 @@ func _weighted_species()->Dictionary:
 func _find_spawn_position()->Vector3:
 	var best:=Vector3.ZERO; var best_dist:=-1.0
 	for attempt in range(32):
-		var a:=rng.randf_range(0,TAU); var r:=sqrt(rng.randf())*3.75; var p:=Vector3(cos(a)*r,0.08,sin(a)*r)
+		var a:=rng.randf_range(0,TAU); var r:=sqrt(rng.randf())*3.48; var p:=Vector3(cos(a)*r,0.08,sin(a)*r)
 		var nearest:=99.0
 		for q in plants: if is_instance_valid(q): nearest=min(nearest,Vector2(p.x,p.z).distance_to(Vector2(q.position.x,q.position.z)))
 		if nearest>best_dist:best=p;best_dist=nearest
