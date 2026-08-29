@@ -39,10 +39,16 @@ func grow(delta: float, plant_age: float) -> void:
 	if mesh_instance == null: return
 	_apply_growth_shape()
 	var maturity: float = clamp(age / 7.0, 0.0, 1.0)
-	var radial: float = pow(maturity, 0.72) * .92
+	# Preserve the established juvenile growth, then make old outer leaves spread low.
+	var late_spread: float = clamp((age - 7.0) / 8.0, 0.0, 1.0)
+	var radial_power: float = 1.45 if birth_time >= 7.0 else .72
+	var radial: float = pow(maturity, radial_power) * .92 + ease(late_spread, .72) * .52
 	var lift: float = lerp(0.10, 0.035, maturity)
+	lift = lerp(lift, 0.008, late_spread)
 	position = position.lerp(Vector3(sin(azimuth) * radial, lift, cos(azimuth) * radial), min(delta * 2.2, 1.0))
 	var target_open: float = lerp(-0.72, -0.04, smoothstep(0.0, 1.0, maturity))
+	# Positive late rotation lowers the mature tip instead of making a circular wall.
+	target_open = lerp(target_open, 0.12, smoothstep(0.0, 1.0, late_spread))
 	rotation.x = lerp(rotation.x, target_open, min(delta * 2.0, 1.0))
 	rotation.z = sin(age * 1.15 + float(order) * .71) * .012 * (1.0 - maturity)
 
