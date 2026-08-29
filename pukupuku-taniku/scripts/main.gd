@@ -1,8 +1,7 @@
 extends Node
 
 const SucculentClass = preload("res://scripts/succulent.gd")
-const TARGET_COUNT := 9
-const POT_RADIUS := 4.35
+const TARGET_COUNT := 5
 const UI_CREAM := Color("#fff1d2")
 const UI_BROWN := Color("#4a2618")
 const UI_GOLD := Color("#e8aa35")
@@ -23,7 +22,20 @@ var bests: Dictionary = {}
 var spawn_queue := 0
 var spawn_timer := 0.0
 var forced_golden_done := false
-var backdrop: Sprite3D
+var view_yaw := 0.0
+var view_pitch := -3.0
+var pointer_down := false
+var pointer_start := Vector2.ZERO
+var pointer_last := Vector2.ZERO
+var pointer_travel := 0.0
+
+const PLANT_SLOTS := [
+	Vector3(0.0, -1.32, -5.2),
+	Vector3(7.04, -1.48, -2.29),
+	Vector3(4.64, -1.40, 6.39),
+	Vector3(-5.35, -1.34, 7.36),
+	Vector3(-7.61, -1.52, -2.47)
+]
 
 func _ready() -> void:
 	rng.randomize()
@@ -55,46 +67,16 @@ func _save() -> void:
 
 func _build_world() -> void:
 	world_root = Node3D.new(); add_child(world_root)
-	backdrop = Sprite3D.new()
-	backdrop.texture = load("res://assets/greenhouse.png")
-	# Keep the shelves and glasshouse visible above the pot, rather than
-	# cropping the tall source image down to its stone-floor section.
-	backdrop.position = Vector3(0.0, -5.0, -8.0)
-	backdrop.pixel_size = 0.0085
-	backdrop.shaded = false
-	backdrop.modulate = Color(0.92,0.92,0.84)
-	world_root.add_child(backdrop)
-	# circular terracotta bowl: thick outer wall + inset soil
-	var pot := MeshInstance3D.new(); var pot_mesh := CylinderMesh.new()
-	pot_mesh.top_radius = 5.18; pot_mesh.bottom_radius = 4.55; pot_mesh.height = 1.25; pot_mesh.radial_segments = 64
-	pot.mesh = pot_mesh; pot.position.y = -0.68
-	pot.material_override = _terracotta_material(false)
-	world_root.add_child(pot)
-	var rim := MeshInstance3D.new(); var torus := TorusMesh.new()
-	torus.inner_radius = 4.72; torus.outer_radius = 5.28; torus.rings = 64; torus.ring_segments = 12
-	rim.mesh = torus; rim.position.y = 0.01; rim.material_override = _terracotta_material(true); world_root.add_child(rim)
-	var soil := MeshInstance3D.new(); var soil_mesh := CylinderMesh.new()
-	soil_mesh.top_radius=4.74; soil_mesh.bottom_radius=4.7; soil_mesh.height=0.18; soil_mesh.radial_segments=64
-	soil.mesh=soil_mesh; soil.position.y=-0.08; soil.material_override=_soil_material(); world_root.add_child(soil)
-	# Dense, mixed akadama/pumice grit: small real geometry catches the warm
-	# greenhouse light and avoids the flat black-brown board-game look.
-	var pebble_mesh := SphereMesh.new(); pebble_mesh.radius=0.072; pebble_mesh.height=0.092; pebble_mesh.radial_segments=8; pebble_mesh.rings=5
-	var multi := MultiMesh.new(); multi.transform_format=MultiMesh.TRANSFORM_3D; multi.use_colors=true; multi.instance_count=560; multi.mesh=pebble_mesh
-	for i in range(multi.instance_count):
-		var a:=rng.randf_range(0,TAU); var r:=sqrt(rng.randf())*4.55
-		var t:=Transform3D(Basis().rotated(Vector3.UP,rng.randf_range(0,TAU)).scaled(Vector3(rng.randf_range(.55,1.75),rng.randf_range(.38,1.0),rng.randf_range(.55,1.55))),Vector3(cos(a)*r,0.045,sin(a)*r))
-		var grit_colors := [Color("#9a4e2f"),Color("#bb7450"),Color("#7a3b27"),Color("#d0aa78"),Color("#8d765c"),Color("#d8c8a3")]
-		multi.set_instance_transform(i,t); multi.set_instance_color(i,grit_colors[rng.randi_range(0,grit_colors.size()-1)] * rng.randf_range(.82,1.08))
-	var pebble_mat:=_mat(Color("#b48661"),0.90,0.0);pebble_mat.vertex_color_use_as_albedo=true
-	var pebbles:=MultiMeshInstance3D.new(); pebbles.multimesh=multi; pebbles.material_override=pebble_mat; world_root.add_child(pebbles)
 	var env_node:=WorldEnvironment.new(); var env:=Environment.new()
-	env.background_mode=Environment.BG_COLOR; env.background_color=Color("#cfd6ad"); env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#b9ac98"); env.ambient_light_energy=0.18
+	var sky := Sky.new(); var panorama := PanoramaSkyMaterial.new()
+	panorama.panorama = load("res://assets/desert-panorama.jpg")
+	sky.sky_material = panorama
+	env.background_mode=Environment.BG_SKY; env.sky=sky; env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#d6b98b"); env.ambient_light_energy=0.32
 	env.tonemap_mode=Environment.TONE_MAPPER_FILMIC
 	env_node.environment=env; world_root.add_child(env_node)
-	var sun:=DirectionalLight3D.new(); sun.rotation_degrees=Vector3(-48,-32,-12); sun.light_color=Color("#ffe3aa"); sun.light_energy=0.40; sun.shadow_enabled=true; sun.directional_shadow_max_distance=24; sun.shadow_blur=2.5; world_root.add_child(sun)
-	var fill:=OmniLight3D.new(); fill.position=Vector3(-3,5,3); fill.light_color=Color("#cbe5cc"); fill.light_energy=0.10; fill.omni_range=10; fill.shadow_enabled=false; world_root.add_child(fill)
-	camera=Camera3D.new(); camera.position=Vector3(0,10.4,9.2); camera.look_at_from_position(camera.position,Vector3(0,0,-0.25)); camera.fov=39.0; camera.current=true; world_root.add_child(camera)
-	world_root.position=Vector3(0,-0.35,0.35)
+	var sun:=DirectionalLight3D.new(); sun.rotation_degrees=Vector3(-18,72,0); sun.light_color=Color("#ffd9a0"); sun.light_energy=0.28; sun.shadow_enabled=false; world_root.add_child(sun)
+	camera=Camera3D.new(); camera.position=Vector3.ZERO; camera.fov=61.0; camera.current=true; world_root.add_child(camera)
+	_apply_view_rotation()
 
 func _mat(color: Color, rough: float, metallic: float) -> StandardMaterial3D:
 	var m:=StandardMaterial3D.new(); m.albedo_color=color; m.roughness=rough; m.metallic=metallic; return m
@@ -148,9 +130,7 @@ func _skin_button(b:Button,bg:Color,font_size:int)->void:
 	b.add_theme_font_size_override("font_size",font_size); b.add_theme_color_override("font_color",UI_BROWN if bg.get_luminance()>.55 else Color.WHITE); b.add_theme_color_override("font_hover_color",UI_BROWN); b.add_theme_stylebox_override("normal",_box(bg,bg.lightened(.22),20,3)); b.add_theme_stylebox_override("hover",_box(bg.lightened(.08),Color.WHITE,20,3)); b.add_theme_stylebox_override("pressed",_box(bg.darkened(.08),bg.lightened(.2),20,3))
 
 func _layout() -> void:
-	var size:=get_viewport().get_visible_rect().size
-	if backdrop:
-		backdrop.pixel_size = 0.0085
+	pass
 
 func spawn_plant(force_golden := false) -> void:
 	var chosen:Dictionary
@@ -177,15 +157,15 @@ func _weighted_species()->Dictionary:
 	return species[0]
 
 func _find_spawn_position()->Vector3:
-	if plants.is_empty(): return Vector3(0,0.08,0)
-	var best:=Vector3.ZERO; var best_dist:=-1.0
-	for attempt in range(32):
-		var a:=rng.randf_range(0,TAU); var r:=sqrt(rng.randf())*3.48; var p:=Vector3(cos(a)*r,0.08,sin(a)*r)
-		var nearest:=99.0
-		for q in plants: if is_instance_valid(q): nearest=min(nearest,Vector2(p.x,p.z).distance_to(Vector2(q.position.x,q.position.z)))
-		if nearest>best_dist:best=p;best_dist=nearest
-		if nearest>1.15:return p
-	return best
+	for slot in PLANT_SLOTS:
+		var occupied := false
+		for plant in plants:
+			if is_instance_valid(plant) and plant.original_pos.distance_to(slot) < .1:
+				occupied = true
+				break
+		if not occupied:
+			return slot
+	return PLANT_SLOTS[0]
 
 func _plant_label()->Label:
 	var l:=Label.new(); l.text="1.6 cm"; l.size=Vector2(92,34); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",17); l.add_theme_color_override("font_color",Color.WHITE); l.add_theme_stylebox_override("normal",_box(Color(0.14,0.08,0.05,.92),Color("#f4e1be"),11,2)); l.mouse_filter=Control.MOUSE_FILTER_IGNORE; return l
@@ -213,23 +193,58 @@ func _update_labels()->void:
 	var sorted:=plants.duplicate(); sorted.sort_custom(func(a,b):return a.position.z<b.position.z)
 	for p in sorted:
 		if not is_instance_valid(p):continue
+		if camera.is_position_behind(p.global_position):
+			p.label.visible=false
+			continue
 		var screen:=camera.unproject_position(p.global_position+Vector3(0,p.visual_scale*.7,0))
 		var r:=Rect2(screen-Vector2(46,62),Vector2(92,34))
 		for other in occupied:
 			if r.intersects(other):r.position.y=other.position.y-37
 		occupied.append(r)
-		p.label.position=r.position; p.label.text="%.1f cm"%p.diameter_cm; p.label.visible=p.state=="growing"
+		p.label.position=r.position; p.label.text="%.1f cm"%p.diameter_cm; p.label.visible=p.state=="growing" and Rect2(Vector2.ZERO,get_viewport().get_visible_rect().size).grow(80).has_point(screen)
 
-func _unhandled_input(event:InputEvent)->void:
-	var pressed: bool = event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT
-	pressed=pressed or (event is InputEventScreenTouch and event.pressed)
-	if not pressed:return
-	var screen_pos:Vector2=event.position
+func _input(event:InputEvent)->void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_begin_pointer(event.position)
+		else:
+			_end_pointer(event.position)
+	elif event is InputEventScreenDrag and pointer_down:
+		_drag_pointer(event.position, event.relative)
+	elif event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_begin_pointer(event.position)
+		else:
+			_end_pointer(event.position)
+	elif event is InputEventMouseMotion and pointer_down and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_drag_pointer(event.position, event.relative)
+
+func _begin_pointer(screen_pos:Vector2)->void:
+	pointer_down=true;pointer_start=screen_pos;pointer_last=screen_pos;pointer_travel=0.0
+
+func _drag_pointer(screen_pos:Vector2,relative:Vector2)->void:
+	pointer_travel+=relative.length();pointer_last=screen_pos
+	view_yaw=fmod(view_yaw-relative.x*.16,360.0)
+	view_pitch=clamp(view_pitch-relative.y*.11,-13.0,9.0)
+	_apply_view_rotation()
+
+func _end_pointer(screen_pos:Vector2)->void:
+	if not pointer_down:return
+	pointer_down=false
+	if pointer_travel<13.0 and pointer_start.distance_to(screen_pos)<16.0:
+		_try_harvest(screen_pos)
+
+func _apply_view_rotation()->void:
+	if camera:camera.rotation_degrees=Vector3(view_pitch,view_yaw,0.0)
+
+func _try_harvest(screen_pos:Vector2)->void:
 	# label-aware screen selection favors small visible plants when overlap occurs
 	var candidates:Array=[]
 	for p in plants:
-		if not is_instance_valid(p) or p.state!="growing":continue
-		var center: Vector2 = camera.unproject_position(p.global_position+Vector3(0,p.visual_scale*.25,0));var radius: float=clamp(28.0+p.visual_scale*58.0,32.0,145.0)
+		if not is_instance_valid(p) or p.state!="growing" or camera.is_position_behind(p.global_position):continue
+		var center: Vector2 = camera.unproject_position(p.global_position+Vector3(0,p.visual_scale*.48,0))
+		var top: Vector2 = camera.unproject_position(p.global_position+Vector3(0,p.visual_scale*1.25,0))
+		var radius: float=clamp(center.distance_to(top)*1.15,30.0,180.0)
 		var dist: float=center.distance_to(screen_pos)
 		if dist<radius:candidates.append({"p":p,"score":dist/max(radius,1.0)+p.visual_scale*.08})
 	if candidates.size()>0:

@@ -42,9 +42,9 @@ func setup(species: Dictionary, seed_value: int, screen_label: Label, _danger: L
 	# resilience tail permits exceptional 30–78+ second specimens without a cap.
 	jelly_threshold = -log(maxf(rng.randf(), 0.000001))
 	var resilience_roll := rng.randf()
-	if resilience_roll < 0.0005:
+	if resilience_roll < 0.003:
 		jelly_threshold *= rng.randf_range(12.0, 30.0)
-	elif resilience_roll < 0.006:
+	elif resilience_roll < 0.025:
 		jelly_threshold *= rng.randf_range(3.0, 10.0)
 	label = screen_label
 	growth_rate = float(data.base_growth_rate)
