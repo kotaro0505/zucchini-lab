@@ -42,8 +42,8 @@ func simulate(delta: float) -> void:
 	while age >= next_leaf_time and leaves.size() < MAX_LEAVES:
 		_add_leaf(next_leaf_time)
 		next_leaf_time += .46 if age >= 7.0 else LEAF_INTERVAL
-	for leaf in leaves: leaf.grow(delta, age)
-	var spread: float = clamp(age / 16.0, 0.0, 1.0)
+	for leaf in leaves: leaf.grow(delta, age, leaves.size())
+	var spread: float = age / 16.0
 	diameter_cm = 1.6 + spread * 19.0 + max(0, leaves.size() - 20) * .235
 	visual_scale = .42 + spread * 2.35
 	position += (original_pos + target_offset - position) * min(delta * 1.8, 1.0)
