@@ -4,6 +4,9 @@ func _ready()->void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(game.plants.size()==5)
+	var species_ids:Array=[]
+	for entry in game.species:species_ids.append(str(entry.species_id))
+	for required in ["laui","golden_laui","colorata","affinis","lutea","kannte"]:assert(required in species_ids)
 	for plant in game.plants:
 		plant.jelly_threshold=1000000.0
 	var initial_count:int=game.plants.size()
@@ -21,7 +24,7 @@ func _ready()->void:
 	var grown_diameter:float=harvest_target.diameter_cm
 	game.view_yaw=0.0;game._apply_view_rotation();var first_basis:Basis=game.camera.transform.basis
 	game.view_yaw=360.0;game._apply_view_rotation();assert(game.camera.transform.basis.is_equal_approx(first_basis))
-	var count_before_drag:int=game.plants.size();game._begin_pointer(Vector2(300,500));game._drag_pointer(Vector2(220,500),Vector2(-80,0));game._end_pointer(Vector2(220,500));assert(game.plants.size()==count_before_drag)
+	game.view_yaw=0.0;game.view_pitch=-3.0;var count_before_drag:int=game.plants.size();var yaw_before:float=game.view_yaw;var pitch_before:float=game.view_pitch;game._begin_pointer(Vector2(300,500));game._drag_pointer(Vector2(380,560),Vector2(80,60));game._end_pointer(Vector2(380,560));assert(game.plants.size()==count_before_drag);assert(game.view_yaw>yaw_before and game.view_pitch>pitch_before)
 	var species_id:String=harvest_target.data.species_id;harvest_target.diameter_cm=21.7;harvest_target.harvest()
 	await get_tree().create_timer(1.2).timeout
 	assert(float(game.bests.get(species_id,0.0))>=21.7)

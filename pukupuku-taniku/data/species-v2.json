@@ -1,6 +1,6 @@
 [
   {"species_id":"colorata","name_ja":"コロラータ","rarity":"通常","spawn_weight":25.0,"base_growth_rate":1.08,"jelly_risk_curve":1.08,"visual_variant":"colorata","golden_variant":false,"colors":["7f9f91","d35f6f"]},
-  {"species_id":"lutea","name_ja":"ルテア","rarity":"通常","spawn_weight":22.0,"base_growth_rate":1.05,"jelly_risk_curve":1.04,"visual_variant":"lutea","golden_variant":false,"colors":["91a95a","d2a14c"]},
+  {"species_id":"lutea","name_ja":"ルテアファンタスマス","rarity":"通常","spawn_weight":22.0,"base_growth_rate":1.05,"jelly_risk_curve":1.04,"visual_variant":"lutea","golden_variant":false,"colors":["91a95a","d2a14c"]},
   {"species_id":"purpusorum","name_ja":"パープソルム","rarity":"通常","spawn_weight":18.0,"base_growth_rate":0.98,"jelly_risk_curve":1.02,"visual_variant":"purpusorum","golden_variant":false,"colors":["574d50","a84d59"]},
   {"species_id":"shaviana","name_ja":"シャビアナ","rarity":"通常","spawn_weight":19.0,"base_growth_rate":1.12,"jelly_risk_curve":1.10,"visual_variant":"shaviana","golden_variant":false,"colors":["847f9b","c56f91"]},
   {"species_id":"pinwheel","name_ja":"ピンウィール","rarity":"通常","spawn_weight":20.0,"base_growth_rate":1.10,"jelly_risk_curve":1.07,"visual_variant":"pinwheel","golden_variant":false,"colors":["688e75","df7b7b"]},

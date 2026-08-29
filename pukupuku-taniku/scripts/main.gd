@@ -69,7 +69,10 @@ func _build_world() -> void:
 	world_root = Node3D.new(); add_child(world_root)
 	var env_node:=WorldEnvironment.new(); var env:=Environment.new()
 	var sky := Sky.new(); var panorama := PanoramaSkyMaterial.new()
-	panorama.panorama = load("res://assets/desert-panorama.jpg")
+	# The default 256px sky radiance map noticeably softens this 1280x640
+	# panorama. 1024 keeps the source detail while remaining Web/mobile-safe.
+	sky.radiance_size = Sky.RADIANCE_SIZE_1024
+	panorama.panorama = load("res://assets/desert-panorama-sharp.jpg")
 	sky.sky_material = panorama
 	env.background_mode=Environment.BG_SKY; env.sky=sky; env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#d6b98b"); env.ambient_light_energy=0.32
 	env.tonemap_mode=Environment.TONE_MAPPER_FILMIC
@@ -224,8 +227,9 @@ func _begin_pointer(screen_pos:Vector2)->void:
 
 func _drag_pointer(screen_pos:Vector2,relative:Vector2)->void:
 	pointer_travel+=relative.length();pointer_last=screen_pos
-	view_yaw=fmod(view_yaw-relative.x*.16,360.0)
-	view_pitch=clamp(view_pitch-relative.y*.11,-13.0,9.0)
+	# Direct manipulation: the panorama follows the finger in both axes.
+	view_yaw=fmod(view_yaw+relative.x*.16,360.0)
+	view_pitch=clamp(view_pitch+relative.y*.11,-13.0,9.0)
 	_apply_view_rotation()
 
 func _end_pointer(screen_pos:Vector2)->void:
