@@ -9,7 +9,7 @@ const UI_GOLD := Color("#e8aa35")
 
 var rng := RandomNumberGenerator.new()
 var species: Array = []
-var plants: Array[Succulent] = []
+var plants: Array = []
 var camera: Camera3D
 var world_root: Node3D
 var labels_layer: Control
@@ -76,14 +76,16 @@ func _build_world() -> void:
 	var soil := MeshInstance3D.new(); var soil_mesh := CylinderMesh.new()
 	soil_mesh.top_radius=4.74; soil_mesh.bottom_radius=4.7; soil_mesh.height=0.18; soil_mesh.radial_segments=64
 	soil.mesh=soil_mesh; soil.position.y=-0.08; soil.material_override=_soil_material(); world_root.add_child(soil)
-	# deterministic pebble layer, real geometry but lightweight
-	var pebble_mesh := SphereMesh.new(); pebble_mesh.radius=0.082; pebble_mesh.height=0.105; pebble_mesh.radial_segments=7; pebble_mesh.rings=4
-	var multi := MultiMesh.new(); multi.transform_format=MultiMesh.TRANSFORM_3D; multi.use_colors=true; multi.instance_count=330; multi.mesh=pebble_mesh
+	# Dense, mixed akadama/pumice grit: small real geometry catches the warm
+	# greenhouse light and avoids the flat black-brown board-game look.
+	var pebble_mesh := SphereMesh.new(); pebble_mesh.radius=0.072; pebble_mesh.height=0.092; pebble_mesh.radial_segments=8; pebble_mesh.rings=5
+	var multi := MultiMesh.new(); multi.transform_format=MultiMesh.TRANSFORM_3D; multi.use_colors=true; multi.instance_count=560; multi.mesh=pebble_mesh
 	for i in range(multi.instance_count):
 		var a:=rng.randf_range(0,TAU); var r:=sqrt(rng.randf())*4.55
-		var t:=Transform3D(Basis().rotated(Vector3.UP,rng.randf_range(0,TAU)).scaled(Vector3(rng.randf_range(.5,1.65),rng.randf_range(.4,1.05),rng.randf_range(.5,1.5))),Vector3(cos(a)*r,0.035,sin(a)*r))
-		multi.set_instance_transform(i,t); multi.set_instance_color(i,Color.from_hsv(rng.randf_range(.035,.10),rng.randf_range(.28,.62),rng.randf_range(.25,.64)))
-	var pebble_mat:=_mat(Color("#b48661"),0.94,0.0);pebble_mat.vertex_color_use_as_albedo=true
+		var t:=Transform3D(Basis().rotated(Vector3.UP,rng.randf_range(0,TAU)).scaled(Vector3(rng.randf_range(.55,1.75),rng.randf_range(.38,1.0),rng.randf_range(.55,1.55))),Vector3(cos(a)*r,0.045,sin(a)*r))
+		var grit_colors := [Color("#9a4e2f"),Color("#bb7450"),Color("#7a3b27"),Color("#d0aa78"),Color("#8d765c"),Color("#d8c8a3")]
+		multi.set_instance_transform(i,t); multi.set_instance_color(i,grit_colors[rng.randi_range(0,grit_colors.size()-1)] * rng.randf_range(.82,1.08))
+	var pebble_mat:=_mat(Color("#b48661"),0.90,0.0);pebble_mat.vertex_color_use_as_albedo=true
 	var pebbles:=MultiMeshInstance3D.new(); pebbles.multimesh=multi; pebbles.material_override=pebble_mat; world_root.add_child(pebbles)
 	var env_node:=WorldEnvironment.new(); var env:=Environment.new()
 	env.background_mode=Environment.BG_COLOR; env.background_color=Color("#cfd6ad"); env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#b9ac98"); env.ambient_light_energy=0.18
@@ -111,7 +113,7 @@ void fragment(){float grain=hash(floor(UV*vec2(180.0,90.0)));float bands=sin(UV.
 
 func _soil_material()->ShaderMaterial:
 	var shader:=Shader.new();shader.code="""shader_type spatial;
-void fragment(){float n=sin(UV.x*93.0+sin(UV.y*37.0)*2.4)*sin(UV.y*81.0+sin(UV.x*29.0)*2.0);n=n*0.5+0.5;float broad=sin(UV.x*19.0+UV.y*23.0)*0.5+0.5;vec3 humus=vec3(0.085,0.031,0.017);vec3 akadama=vec3(0.25,0.085,0.035);ALBEDO=mix(humus,akadama,n*0.18+broad*0.08);ROUGHNESS=0.98;SPECULAR=0.06;}""";var material:=ShaderMaterial.new();material.shader=shader;return material
+void fragment(){float a=sin(UV.x*173.0+sin(UV.y*61.0)*2.7)*sin(UV.y*157.0+sin(UV.x*47.0)*2.2);float b=sin(UV.x*43.0+UV.y*51.0)*.5+.5;float grain=clamp(a*.5+.5,0.0,1.0);vec3 lo=vec3(.105,.047,.027);vec3 hi=vec3(.31,.145,.075);vec3 c=mix(lo,hi,grain*.34+b*.12);ALBEDO=c;ROUGHNESS=.96;SPECULAR=.08;}""";var material:=ShaderMaterial.new();material.shader=shader;return material
 
 func _build_ui() -> void:
 	var ui:=CanvasLayer.new(); ui.layer=10; add_child(ui)
@@ -160,7 +162,7 @@ func spawn_plant(force_golden := false) -> void:
 	else: chosen=_weighted_species()
 	var pos:=_find_spawn_position()
 	var label:=_plant_label(); labels_layer.add_child(label)
-	var p:=SucculentClass.new() as Succulent
+	var p = SucculentClass.new()
 	p.original_pos=pos; p.position=pos; world_root.add_child(p); p.setup(chosen,rng.randi(),label,null)
 	p.harvested.connect(_on_harvested); p.jellied.connect(_on_jellied)
 	plants.append(p)
@@ -197,22 +199,14 @@ func _process(delta:float)->void:
 		spawn_timer-=delta
 		if spawn_timer<=0: spawn_queue-=1; spawn_plant(); spawn_timer=rng.randf_range(.35,.9)
 
-func _resolve_crowding(delta:float)->void:
-	for p in plants: if is_instance_valid(p): p.target_offset*=max(0.0,1.0-delta*.7)
-	for i in range(plants.size()):
-		var a:=plants[i]; if not is_instance_valid(a) or a.state!="growing":continue
-		for j in range(i+1,plants.size()):
-			var b:=plants[j]; if not is_instance_valid(b) or b.state!="growing":continue
-			var va:=Vector2(a.position.x,a.position.z);var vb:=Vector2(b.position.x,b.position.z);var d:=va.distance_to(vb);var need:=(a.hit_radius()+b.hit_radius())*.78
-			if d<need and d>.01:
-				var dir:=(va-vb).normalized();var push:=(need-d)*.23
-				var wa:=b.hit_radius()/(a.hit_radius()+b.hit_radius());var wb:=1.0-wa
-				a.target_offset+=Vector3(dir.x,0,dir.y)*push*wa;b.target_offset-=Vector3(dir.x,0,dir.y)*push*wb
+func _resolve_crowding(_delta:float)->void:
+	# Sprite plants remain rooted at their spawn point. Natural overlap is less
+	# distracting than sliding a planted rosette around as it grows.
 	for p in plants:
-		if not is_instance_valid(p):continue
-		var next:=p.original_pos+p.target_offset;var flat:=Vector2(next.x,next.z)
-		if flat.length()>POT_RADIUS-p.hit_radius()*.35:
-			flat=flat.normalized()*(POT_RADIUS-p.hit_radius()*.35);p.target_offset=Vector3(flat.x,0,flat.y)-p.original_pos
+		if is_instance_valid(p):
+			p.target_offset = Vector3.ZERO
+			p.position.x = p.original_pos.x
+			p.position.z = p.original_pos.z
 
 func _update_labels()->void:
 	var occupied:Array[Rect2]=[]
@@ -241,8 +235,8 @@ func _unhandled_input(event:InputEvent)->void:
 	if candidates.size()>0:
 		candidates.sort_custom(func(a,b):return a.score<b.score);candidates[0].p.harvest()
 
-func _on_harvested(p:Succulent)->void:
-	var old:=float(bests.get(p.data.species_id,0.0));var is_record:=p.diameter_cm>old
+func _on_harvested(p)->void:
+	var old:=float(bests.get(p.data.species_id,0.0));var is_record:bool=p.diameter_cm>old
 	if is_record:bests[p.data.species_id]=p.diameter_cm
 	var reward:=int(p.diameter_cm*11.0)*(4 if str(p.data.rarity)=="スーパーレア" else 1);coins+=reward;_save();_update_best_ui();coin_label.text=" ●  %s  ＋"%_comma(coins)
 	_show_float(p,"GET!\n%s  %.1fcm"%[p.data.name_ja,p.diameter_cm],Color("#fff3a2"))
@@ -250,21 +244,21 @@ func _on_harvested(p:Succulent)->void:
 	var tween:=create_tween().set_parallel();tween.tween_property(p,"position:y",p.position.y+2.0,.42).set_trans(Tween.TRANS_BACK);tween.tween_property(p,"scale",p.scale*1.2,.22);tween.chain().tween_property(p,"scale",Vector3.ONE*0.01,.24)
 	_cleanup_later(p,.68)
 
-func _on_jellied(p:Succulent)->void:
+func _on_jellied(p)->void:
 	_show_float(p,"ぷるん…\nジュレ",Color("#e7c9f0"))
 	var tw:=create_tween();tw.tween_property(p,"scale",Vector3(p.scale.x*1.05,p.scale.y*.46,p.scale.z*1.05),.28).set_trans(Tween.TRANS_BOUNCE);tw.tween_interval(.25);tw.tween_property(p,"scale",Vector3.ONE*0.01,.38)
 	_cleanup_later(p,1.0)
 
-func _cleanup_later(p:Succulent,delay:float)->void:
+func _cleanup_later(p,delay:float)->void:
 	plants.erase(p);spawn_queue+=1;spawn_timer=rng.randf_range(.35,.85)
 	await get_tree().create_timer(delay).timeout
 	if is_instance_valid(p):p.label.queue_free();p.queue_free()
 
-func _show_float(p:Succulent,text:String,color:Color)->void:
+func _show_float(p,text:String,color:Color)->void:
 	var l:=Label.new();l.text=text;l.size=Vector2(230,90);l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER;l.add_theme_font_size_override("font_size",24);l.add_theme_color_override("font_color",color);l.add_theme_color_override("font_outline_color",UI_BROWN);l.add_theme_constant_override("outline_size",7);l.position=camera.unproject_position(p.global_position)-Vector2(115,40);effects_layer.add_child(l)
 	var tw:=create_tween().set_parallel();tw.tween_property(l,"position:y",l.position.y-85,.62).set_trans(Tween.TRANS_BACK);tw.tween_property(l,"modulate:a",0.0,.62).set_delay(.18);tw.chain().tween_callback(l.queue_free)
 
-func _show_record(p:Succulent,reward:int)->void:
+func _show_record(p,reward:int)->void:
 	record_text.text="収穫記録更新！\nNEW RECORD\n%.1f cm\nコイン +%d"%[p.diameter_cm,reward];record_card.visible=true;record_card.scale=Vector2(.72,.72);record_card.pivot_offset=record_card.size/2
 	var tw:=create_tween();tw.tween_property(record_card,"scale",Vector2.ONE,.24).set_trans(Tween.TRANS_BACK);tw.tween_interval(2.2);tw.tween_property(record_card,"modulate:a",0.0,.25);tw.tween_callback(func():record_card.visible=false;record_card.modulate.a=1.0)
 
