@@ -1,7 +1,7 @@
 extends Node
 
 const SucculentClass = preload("res://scripts/succulent.gd")
-const TARGET_COUNT := 1
+const TARGET_COUNT := 9
 const POT_RADIUS := 4.35
 const UI_CREAM := Color("#fff1d2")
 const UI_BROWN := Color("#4a2618")
@@ -38,8 +38,9 @@ func _ready() -> void:
 func _load_species() -> void:
 	var raw := FileAccess.get_file_as_string("res://data/species-v2.json")
 	var all_species: Array = JSON.parse_string(raw)
+	var enabled := ["colorata", "lutea", "affinis", "laui", "kannte", "golden_laui"]
 	for entry in all_species:
-		if str(entry.visual_variant) == "laui":
+		if str(entry.species_id) in enabled:
 			species.append(entry)
 
 func _load_save() -> void:
@@ -56,8 +57,10 @@ func _build_world() -> void:
 	world_root = Node3D.new(); add_child(world_root)
 	backdrop = Sprite3D.new()
 	backdrop.texture = load("res://assets/greenhouse.png")
-	backdrop.position = Vector3(0.0, 3.8, -8.0)
-	backdrop.pixel_size = 0.0125
+	# Keep the shelves and glasshouse visible above the pot, rather than
+	# cropping the tall source image down to its stone-floor section.
+	backdrop.position = Vector3(0.0, -5.0, -8.0)
+	backdrop.pixel_size = 0.0085
 	backdrop.shaded = false
 	backdrop.modulate = Color(0.92,0.92,0.84)
 	world_root.add_child(backdrop)
@@ -145,7 +148,7 @@ func _skin_button(b:Button,bg:Color,font_size:int)->void:
 func _layout() -> void:
 	var size:=get_viewport().get_visible_rect().size
 	if backdrop:
-		backdrop.pixel_size = 0.0125
+		backdrop.pixel_size = 0.0085
 
 func spawn_plant(force_golden := false) -> void:
 	var chosen:Dictionary
