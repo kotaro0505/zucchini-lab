@@ -1,14 +1,16 @@
 extends Node
 
 const SucculentClass = preload("res://scripts/succulent.gd")
-const TARGET_COUNT := 5
+const TARGET_COUNT := 9
 const UI_CREAM := Color("#fff1d2")
 const UI_BROWN := Color("#4a2618")
 const UI_GOLD := Color("#e8aa35")
 
 var rng := RandomNumberGenerator.new()
 var species: Array = []
+var opening_species: Array = []
 var plants: Array = []
+var recent_vacated_slots: Array[Vector3] = []
 var camera: Camera3D
 var world_root: Node3D
 var labels_layer: Control
@@ -31,19 +33,29 @@ var pointer_travel := 0.0
 
 const PLANT_SLOTS := [
 	Vector3(0.0, -1.32, -5.2),
-	Vector3(7.04, -1.48, -2.29),
-	Vector3(4.64, -1.40, 6.39),
-	Vector3(-5.35, -1.34, 7.36),
-	Vector3(-7.61, -1.52, -2.47)
+	Vector3(3.17, -1.42, -6.80),
+	Vector3(4.96, -1.37, -3.88),
+	Vector3(8.61, -1.52, -1.83),
+	Vector3(5.63, -1.35, 1.40),
+	Vector3(5.82, -1.46, 4.89),
+	Vector3(2.60, -1.38, 5.85),
+	Vector3(-0.28, -1.49, 7.99),
+	Vector3(-2.58, -1.34, 4.85),
+	Vector3(-5.82, -1.44, 4.23),
+	Vector3(-5.91, -1.36, 1.04),
+	Vector3(-7.97, -1.50, -2.29),
+	Vector3(-4.16, -1.35, -3.75),
+	Vector3(-2.89, -1.43, -6.81)
 ]
 
 func _ready() -> void:
 	rng.randomize()
 	_load_species()
+	opening_species=species.duplicate();opening_species.shuffle()
 	_load_save()
 	_build_world()
 	_build_ui()
-	for i in range(TARGET_COUNT): spawn_plant(i == 0 and OS.has_feature("editor"))
+	for i in range(TARGET_COUNT):spawn_plant()
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 
@@ -142,7 +154,8 @@ func spawn_plant(force_golden := false) -> void:
 			if str(entry.visual_variant) == "gold_laui": chosen = entry
 		if chosen.is_empty(): chosen = species[0]
 		forced_golden_done=true
-	else: chosen=_weighted_species()
+	elif not opening_species.is_empty():chosen=opening_species.pop_front()
+	else:chosen=_weighted_species()
 	var pos:=_find_spawn_position()
 	var label:=_plant_label(); labels_layer.add_child(label)
 	var p = SucculentClass.new()
@@ -160,15 +173,23 @@ func _weighted_species()->Dictionary:
 	return species[0]
 
 func _find_spawn_position()->Vector3:
+	var empty_slots:Array[Vector3]=[]
 	for slot in PLANT_SLOTS:
 		var occupied := false
 		for plant in plants:
 			if is_instance_valid(plant) and plant.original_pos.distance_to(slot) < .1:
 				occupied = true
 				break
-		if not occupied:
-			return slot
-	return PLANT_SLOTS[0]
+		if not occupied:empty_slots.append(slot)
+	var preferred:Array[Vector3]=[]
+	for slot in empty_slots:
+		var recently_used:=false
+		for old_slot in recent_vacated_slots:
+			if slot.distance_to(old_slot)<.1:recently_used=true;break
+		if not recently_used:preferred.append(slot)
+	var choices:=preferred if not preferred.is_empty() else empty_slots
+	if choices.is_empty():return PLANT_SLOTS[rng.randi_range(0,PLANT_SLOTS.size()-1)]
+	return choices[rng.randi_range(0,choices.size()-1)]
 
 func _plant_label()->Label:
 	var l:=Label.new(); l.text="1.6 cm"; l.size=Vector2(92,34); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",17); l.add_theme_color_override("font_color",Color.WHITE); l.add_theme_stylebox_override("normal",_box(Color(0.14,0.08,0.05,.92),Color("#f4e1be"),11,2)); l.mouse_filter=Control.MOUSE_FILTER_IGNORE; return l
@@ -269,6 +290,8 @@ func _on_jellied(p)->void:
 	_cleanup_later(p,1.0)
 
 func _cleanup_later(p,delay:float)->void:
+	recent_vacated_slots.append(p.original_pos)
+	while recent_vacated_slots.size()>3:recent_vacated_slots.pop_front()
 	plants.erase(p);spawn_queue+=1;spawn_timer=rng.randf_range(.35,.85)
 	await get_tree().create_timer(delay).timeout
 	if is_instance_valid(p):p.label.queue_free();p.queue_free()

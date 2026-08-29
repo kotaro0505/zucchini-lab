@@ -3,10 +3,13 @@ func _ready()->void:
 	var scene:PackedScene=load("res://main.tscn");var game:Node=scene.instantiate();add_child(game)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert(game.plants.size()==5)
+	assert(game.plants.size()==9)
 	var species_ids:Array=[]
 	for entry in game.species:species_ids.append(str(entry.species_id))
 	for required in ["laui","golden_laui","colorata","affinis","lutea","kannte"]:assert(required in species_ids)
+	var opening_ids:Array=[]
+	for plant in game.plants:opening_ids.append(str(plant.data.species_id))
+	for required in ["laui","golden_laui","colorata","affinis","lutea","kannte"]:assert(required in opening_ids)
 	for plant in game.plants:
 		plant.jelly_threshold=1000000.0
 	var initial_count:int=game.plants.size()
@@ -29,6 +32,7 @@ func _ready()->void:
 	await get_tree().create_timer(1.2).timeout
 	assert(float(game.bests.get(species_id,0.0))>=21.7)
 	assert(game.plants.size()==initial_count)
+	var replacement_position:Vector3=game.plants[-1].original_pos;assert(replacement_position.distance_to(rooted_position)>.1)
 	var jelly_target=game.plants[0]
 	jelly_target.jelly_threshold=0.0
 	jelly_target.simulate(.1)
