@@ -8,11 +8,13 @@ var age := 0.0
 var order := 0
 var azimuth := 0.0
 var mesh_instance: MeshInstance3D
+var seed_pair := false
 
-func setup(created_at: float, leaf_order: int) -> void:
+func setup(created_at: float, leaf_order: int, is_seed_pair := false) -> void:
 	birth_time = created_at
 	order = leaf_order
-	azimuth = deg_to_rad(137.507764 * float(order))
+	seed_pair = is_seed_pair
+	azimuth = float(order) * PI if seed_pair else deg_to_rad(137.507764 * float(order))
 	set_meta("birth_time", birth_time)
 	set_meta("age", age)
 	var imported := LEAF_SCENE.instantiate()
@@ -40,17 +42,21 @@ func grow(delta: float, plant_age: float) -> void:
 	_apply_growth_shape()
 	var maturity: float = clamp(age / 7.0, 0.0, 1.0)
 	# Preserve the established juvenile growth, then make old outer leaves spread low.
-	var late_spread: float = clamp((age - 7.0) / 8.0, 0.0, 1.0)
+	var late_spread: float = clamp((age - 5.5) / 8.0, 0.0, 1.0)
 	var radial_power: float = 1.45 if birth_time >= 7.0 else .72
-	var radial: float = pow(maturity, radial_power) * .92 + ease(late_spread, .72) * .52
+	var radial: float = pow(maturity, radial_power) * .92 + ease(late_spread, .72) * .70
 	var lift: float = lerp(0.10, 0.035, maturity)
-	lift = lerp(lift, 0.008, late_spread)
+	lift = lerp(lift, 0.004, late_spread)
 	position = position.lerp(Vector3(sin(azimuth) * radial, lift, cos(azimuth) * radial), min(delta * 2.2, 1.0))
 	var target_open: float = lerp(-0.72, -0.04, smoothstep(0.0, 1.0, maturity))
 	# Positive late rotation lowers the mature tip instead of making a circular wall.
-	target_open = lerp(target_open, 0.12, smoothstep(0.0, 1.0, late_spread))
+	target_open = lerp(target_open, 0.18, smoothstep(0.0, 1.0, late_spread))
+	if seed_pair and age < 1.8:
+		target_open = lerp(-0.16, target_open, smoothstep(0.75, 1.8, age))
 	rotation.x = lerp(rotation.x, target_open, min(delta * 2.0, 1.0))
 	rotation.z = sin(age * 1.15 + float(order) * .71) * .012 * (1.0 - maturity)
+	# Fewer outer leaves are compensated by broader, longer and visibly plumper old leaves.
+	scale = Vector3(1.65 * (1.0 + late_spread * .18), 1.65 * (1.0 + late_spread * .24), 1.65 * (1.0 + late_spread * .13))
 
 func _apply_growth_shape() -> void:
 	var young := 0.0

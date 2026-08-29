@@ -5,8 +5,8 @@ signal harvested(plant: Succulent)
 signal jellied(plant: Succulent)
 
 const GrowthLeaf = preload("res://scripts/laui_leaf.gd")
-const MAX_LEAVES := 72
-const LEAF_INTERVAL := 0.48
+const MAX_LEAVES := 61
+const LEAF_INTERVAL := 0.56
 
 var data: Dictionary
 var age := 0.0
@@ -26,14 +26,14 @@ func setup(species: Dictionary, seed_value: int, screen_label: Label, _danger: L
 	rng.seed = seed_value
 	label = screen_label
 	growth_rate = float(data.base_growth_rate)
-	for i in range(3): _add_leaf(-float(2 - i) * .34)
-	next_leaf_time = .42
+	for i in range(2): _add_leaf(-.72, true)
+	next_leaf_time = .64
 
-func _add_leaf(created_at: float = age) -> void:
+func _add_leaf(created_at: float = age, is_seed_pair := false) -> void:
 	if leaves.size() >= MAX_LEAVES: return
 	var leaf := GrowthLeaf.new() as LauiGrowthLeaf
 	add_child(leaf)
-	leaf.setup(created_at, leaves.size())
+	leaf.setup(created_at, leaves.size(), is_seed_pair)
 	leaves.append(leaf)
 
 func simulate(delta: float) -> void:
@@ -41,7 +41,7 @@ func simulate(delta: float) -> void:
 	age += delta
 	while age >= next_leaf_time and leaves.size() < MAX_LEAVES:
 		_add_leaf(next_leaf_time)
-		next_leaf_time += .34 if age >= 7.0 else LEAF_INTERVAL
+		next_leaf_time += .40 if age >= 7.0 else LEAF_INTERVAL
 	for leaf in leaves: leaf.grow(delta, age)
 	var spread: float = clamp(age / 16.0, 0.0, 1.0)
 	diameter_cm = 1.6 + spread * 19.0 + max(0, leaves.size() - 20) * .20
