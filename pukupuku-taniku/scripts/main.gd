@@ -1,7 +1,7 @@
 extends Node
 
 const SucculentClass = preload("res://scripts/succulent.gd")
-const TARGET_COUNT := 9
+const TARGET_COUNT := 45
 const UI_CREAM := Color("#fff1d2")
 const UI_BROWN := Color("#4a2618")
 const UI_GOLD := Color("#e8aa35")
@@ -30,23 +30,6 @@ var pointer_down := false
 var pointer_start := Vector2.ZERO
 var pointer_last := Vector2.ZERO
 var pointer_travel := 0.0
-
-const PLANT_SLOTS := [
-	Vector3(0.0, -1.32, -5.2),
-	Vector3(3.17, -1.42, -6.80),
-	Vector3(4.96, -1.37, -3.88),
-	Vector3(8.61, -1.52, -1.83),
-	Vector3(5.63, -1.35, 1.40),
-	Vector3(5.82, -1.46, 4.89),
-	Vector3(2.60, -1.38, 5.85),
-	Vector3(-0.28, -1.49, 7.99),
-	Vector3(-2.58, -1.34, 4.85),
-	Vector3(-5.82, -1.44, 4.23),
-	Vector3(-5.91, -1.36, 1.04),
-	Vector3(-7.97, -1.50, -2.29),
-	Vector3(-4.16, -1.35, -3.75),
-	Vector3(-2.89, -1.43, -6.81)
-]
 
 func _ready() -> void:
 	rng.randomize()
@@ -173,23 +156,27 @@ func _weighted_species()->Dictionary:
 	return species[0]
 
 func _find_spawn_position()->Vector3:
-	var empty_slots:Array[Vector3]=[]
-	for slot in PLANT_SLOTS:
-		var occupied := false
+	# Sample the entire annulus rather than choosing from reusable slots.  Keep
+	# the best of several candidates so 45 plants remain organic but readable.
+	var best := Vector3.ZERO
+	var best_clearance := -1.0
+	for attempt in range(72):
+		var angle := rng.randf_range(0.0, TAU)
+		# sqrt gives an even ground-area distribution instead of a dense ring.
+		var near_radius := 4.7
+		var far_radius := 10.8
+		var radius := sqrt(lerp(near_radius * near_radius, far_radius * far_radius, rng.randf()))
+		var candidate := Vector3(sin(angle) * radius, -1.16 - (radius - near_radius) * .055, -cos(angle) * radius)
+		var clearance := 99.0
 		for plant in plants:
-			if is_instance_valid(plant) and plant.original_pos.distance_to(slot) < .1:
-				occupied = true
-				break
-		if not occupied:empty_slots.append(slot)
-	var preferred:Array[Vector3]=[]
-	for slot in empty_slots:
-		var recently_used:=false
-		for old_slot in recent_vacated_slots:
-			if slot.distance_to(old_slot)<.1:recently_used=true;break
-		if not recently_used:preferred.append(slot)
-	var choices:=preferred if not preferred.is_empty() else empty_slots
-	if choices.is_empty():return PLANT_SLOTS[rng.randi_range(0,PLANT_SLOTS.size()-1)]
-	return choices[rng.randi_range(0,choices.size()-1)]
+			if is_instance_valid(plant): clearance = minf(clearance, candidate.distance_to(plant.original_pos))
+		for old_pos in recent_vacated_slots:
+			clearance = minf(clearance, candidate.distance_to(old_pos) * .82)
+		if clearance > best_clearance:
+			best = candidate
+			best_clearance = clearance
+		if clearance >= 1.18: return candidate
+	return best
 
 func _plant_label()->Label:
 	var l:=Label.new(); l.text="1.6 cm"; l.size=Vector2(92,34); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",17); l.add_theme_color_override("font_color",Color.WHITE); l.add_theme_stylebox_override("normal",_box(Color(0.14,0.08,0.05,.92),Color("#f4e1be"),11,2)); l.mouse_filter=Control.MOUSE_FILTER_IGNORE; return l
@@ -249,8 +236,8 @@ func _begin_pointer(screen_pos:Vector2)->void:
 func _drag_pointer(screen_pos:Vector2,relative:Vector2)->void:
 	pointer_travel+=relative.length();pointer_last=screen_pos
 	# Direct manipulation: the panorama follows the finger in both axes.
-	view_yaw=fmod(view_yaw+relative.x*.16,360.0)
-	view_pitch=clamp(view_pitch+relative.y*.11,-13.0,9.0)
+	view_yaw=fmod(view_yaw+relative.x*.052,360.0)
+	view_pitch=clamp(view_pitch+relative.y*.038,-13.0,9.0)
 	_apply_view_rotation()
 
 func _end_pointer(screen_pos:Vector2)->void:
@@ -291,7 +278,7 @@ func _on_jellied(p)->void:
 
 func _cleanup_later(p,delay:float)->void:
 	recent_vacated_slots.append(p.original_pos)
-	while recent_vacated_slots.size()>3:recent_vacated_slots.pop_front()
+	while recent_vacated_slots.size()>12:recent_vacated_slots.pop_front()
 	plants.erase(p);spawn_queue+=1;spawn_timer=rng.randf_range(.35,.85)
 	await get_tree().create_timer(delay).timeout
 	if is_instance_valid(p):p.label.queue_free();p.queue_free()
