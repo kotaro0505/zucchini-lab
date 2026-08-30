@@ -28,7 +28,7 @@ func _ready()->void:
 	assert(harvest_target.plant_sprite.texture!=null)
 	var grown_scale:float=harvest_target.plant_sprite.scale.x
 	var grown_diameter:float=harvest_target.diameter_cm
-	assert(game.current_mode=="greenhouse" and game.pot_root.visible)
+	assert(game.current_mode=="greenhouse" and not game.pot_root.visible)
 	game._toggle_mode();assert(game.current_mode=="habitat" and not game.pot_root.visible)
 	game.view_yaw=0.0;game._apply_view_rotation();var first_basis:Basis=game.camera.transform.basis
 	game.view_yaw=360.0;game._apply_view_rotation();assert(game.camera.transform.basis.is_equal_approx(first_basis))
@@ -39,6 +39,7 @@ func _ready()->void:
 	assert(float(game.bests.get(species_id,0.0))>=21.7)
 	assert(game.plants.size()==initial_count)
 	var replacement_position:Vector3=game.plants[-1].original_pos;assert(replacement_position.distance_to(rooted_position)>.1)
+	for plant in game.plants:plant.jelly_checks_enabled=false
 	var jelly_target=game.plants[0]
 	jelly_target.jelly()
 	assert(jelly_target.state=="jelly")

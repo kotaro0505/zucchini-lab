@@ -68,14 +68,14 @@ func _save() -> void:
 
 func _build_world() -> void:
 	greenhouse_layer=CanvasLayer.new();greenhouse_layer.layer=-10;add_child(greenhouse_layer)
-	var greenhouse:=TextureRect.new();greenhouse.texture=load("res://assets/greenhouse.png");greenhouse.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);greenhouse.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;greenhouse.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;greenhouse.mouse_filter=Control.MOUSE_FILTER_IGNORE;greenhouse_layer.add_child(greenhouse)
+	var greenhouse:=TextureRect.new();greenhouse.texture=load("res://assets/greenhouse-pot.jpg");greenhouse.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);greenhouse.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;greenhouse.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;greenhouse.mouse_filter=Control.MOUSE_FILTER_IGNORE;greenhouse_layer.add_child(greenhouse)
 	world_root = Node3D.new(); add_child(world_root)
 	habitat_env=WorldEnvironment.new(); var env:=Environment.new()
 	var sky := Sky.new(); var panorama := PanoramaSkyMaterial.new()
 	# The default 256px sky radiance map noticeably softens this 1280x640
 	# panorama. 1024 keeps the source detail while remaining Web/mobile-safe.
 	sky.radiance_size = Sky.RADIANCE_SIZE_1024
-	panorama.panorama = load("res://assets/desert-panorama-sharp.jpg")
+	panorama.panorama = load("res://assets/highland-panorama.jpg")
 	sky.sky_material = panorama
 	env.background_mode=Environment.BG_SKY; env.sky=sky; env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#d6b98b"); env.ambient_light_energy=0.32
 	env.tonemap_mode=Environment.TONE_MAPPER_FILMIC
@@ -210,12 +210,14 @@ func _apply_mode()->void:
 	if camera==null:return
 	var greenhouse_mode:=current_mode=="greenhouse"
 	greenhouse_layer.visible=greenhouse_mode
-	pot_root.visible=greenhouse_mode
+	# The official greenhouse artwork already contains the finished pot and soil.
+	# Keep the old geometry disabled so no duplicate rim covers the sprites.
+	pot_root.visible=false
 	habitat_environment.background_mode=Environment.BG_CANVAS if greenhouse_mode else Environment.BG_SKY
 	for p in plants:
 		if is_instance_valid(p):p.visible=greenhouse_mode;p.label.visible=false
 	if greenhouse_mode:
-		camera.position=Vector3(0,7.3,8.6);camera.look_at_from_position(camera.position,Vector3(0,-.2,0),Vector3.UP)
+		camera.position=Vector3(0,7.3,8.6);camera.look_at_from_position(camera.position,Vector3(0,1.05,0),Vector3.UP)
 	else:
 		camera.position=Vector3.ZERO;_apply_view_rotation()
 	if mode_button:
