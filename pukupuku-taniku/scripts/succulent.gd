@@ -28,10 +28,7 @@ var target_offset := Vector3.ZERO
 var rng := RandomNumberGenerator.new()
 var label: Label
 const GROWTH_CM_PER_SECOND := 1.1875
-const HAZARD_SIZES := [1.6, 40.0, 60.0, 70.0, 100.0]
-# Cumulative-hazard slopes per centimetre. Smooth interpolation integrates to
-# the requested 29%, 9.5%, 4.7% and 0.35% ordinary survival landmarks.
-const HAZARD_PER_CM := [0.015, 0.049479, 0.062121, 0.078679, 0.094454]
+const NORMAL_JELLY_CHANCE_PER_SECOND := .143
 
 var visual_scale := 0.18
 var plant_sprite: Sprite3D
@@ -104,25 +101,13 @@ func simulate(delta: float) -> void:
 	visual_scale = .18 + (diameter_cm - 1.6) * .058
 	_update_visual(delta)
 	if jelly_checks_enabled:
-		var rate := ordinary_jelly_hazard_per_second(diameter_cm)
-		if is_special: rate *= .85
-		# Poisson conversion makes this an exact per-second probability regardless
-		# of frame duration; it is always below 100% for every finite delta.
-		var jelly_probability := 1.0 - exp(-rate * delta)
+		# Convert the specified one-second chance to a continuous hazard, then back
+		# to this frame's chance. This is FPS independent and never preselects a
+		# lifetime or final size.
+		var rate := -log(1.0-NORMAL_JELLY_CHANCE_PER_SECOND)
+		if is_special:rate*=.85
+		var jelly_probability := 1.0-exp(-rate*delta)
 		if rng.randf() < jelly_probability: jelly()
-
-static func ordinary_jelly_hazard_per_second(size_cm: float) -> float:
-	var q := HAZARD_PER_CM[0]
-	if size_cm >= HAZARD_SIZES[-1]:
-		q = HAZARD_PER_CM[-1] + (size_cm - HAZARD_SIZES[-1]) * .00018
-	else:
-		for i in range(HAZARD_SIZES.size() - 1):
-			if size_cm <= HAZARD_SIZES[i + 1]:
-				var t: float = clampf((size_cm - HAZARD_SIZES[i]) / (HAZARD_SIZES[i + 1] - HAZARD_SIZES[i]), 0.0, 1.0)
-				t = t * t * (3.0 - 2.0 * t)
-				q = lerpf(HAZARD_PER_CM[i], HAZARD_PER_CM[i + 1], t)
-				break
-	return GROWTH_CM_PER_SECOND * q
 
 func _update_visual(delta: float) -> void:
 	if plant_sprite == null: return

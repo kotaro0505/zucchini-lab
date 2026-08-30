@@ -1,7 +1,7 @@
 extends Node
 
 const SucculentClass = preload("res://scripts/succulent.gd")
-const TARGET_COUNT := 45
+const TARGET_COUNT := 12
 const UI_CREAM := Color("#fff1d2")
 const UI_BROWN := Color("#4a2618")
 const UI_GOLD := Color("#e8aa35")
@@ -13,6 +13,12 @@ var plants: Array = []
 var recent_vacated_slots: Array[Vector3] = []
 var camera: Camera3D
 var world_root: Node3D
+var pot_root: Node3D
+var greenhouse_layer: CanvasLayer
+var habitat_env: WorldEnvironment
+var habitat_environment: Environment
+var mode_button: Button
+var current_mode := "greenhouse"
 var labels_layer: Control
 var effects_layer: Control
 var best_label: Label
@@ -61,8 +67,10 @@ func _save() -> void:
 	f.store_string(JSON.stringify({"bests":bests,"coins":coins}))
 
 func _build_world() -> void:
+	greenhouse_layer=CanvasLayer.new();greenhouse_layer.layer=-10;add_child(greenhouse_layer)
+	var greenhouse:=TextureRect.new();greenhouse.texture=load("res://assets/greenhouse.png");greenhouse.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);greenhouse.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;greenhouse.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;greenhouse.mouse_filter=Control.MOUSE_FILTER_IGNORE;greenhouse_layer.add_child(greenhouse)
 	world_root = Node3D.new(); add_child(world_root)
-	var env_node:=WorldEnvironment.new(); var env:=Environment.new()
+	habitat_env=WorldEnvironment.new(); var env:=Environment.new()
 	var sky := Sky.new(); var panorama := PanoramaSkyMaterial.new()
 	# The default 256px sky radiance map noticeably softens this 1280x640
 	# panorama. 1024 keeps the source detail while remaining Web/mobile-safe.
@@ -71,10 +79,17 @@ func _build_world() -> void:
 	sky.sky_material = panorama
 	env.background_mode=Environment.BG_SKY; env.sky=sky; env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("#d6b98b"); env.ambient_light_energy=0.32
 	env.tonemap_mode=Environment.TONE_MAPPER_FILMIC
-	env_node.environment=env; world_root.add_child(env_node)
+	habitat_environment=env;habitat_env.environment=env; world_root.add_child(habitat_env)
 	var sun:=DirectionalLight3D.new(); sun.rotation_degrees=Vector3(-18,72,0); sun.light_color=Color("#ffd9a0"); sun.light_energy=0.28; sun.shadow_enabled=false; world_root.add_child(sun)
-	camera=Camera3D.new(); camera.position=Vector3.ZERO; camera.fov=61.0; camera.current=true; world_root.add_child(camera)
-	_apply_view_rotation()
+	camera=Camera3D.new(); camera.fov=54.0; camera.current=true; world_root.add_child(camera)
+	_build_greenhouse_pot()
+	_apply_mode()
+
+func _build_greenhouse_pot()->void:
+	pot_root=Node3D.new();world_root.add_child(pot_root)
+	var body:=MeshInstance3D.new();var body_mesh:=CylinderMesh.new();body_mesh.top_radius=4.55;body_mesh.bottom_radius=3.75;body_mesh.height=1.65;body_mesh.radial_segments=64;body.mesh=body_mesh;body.position.y=-.86;body.material_override=_terracotta_material(false);pot_root.add_child(body)
+	var rim:=MeshInstance3D.new();var rim_mesh:=TorusMesh.new();rim_mesh.inner_radius=4.18;rim_mesh.outer_radius=4.62;rim_mesh.rings=64;rim_mesh.ring_segments=16;rim.mesh=rim_mesh;rim.position.y=.02;rim.material_override=_terracotta_material(true);pot_root.add_child(rim)
+	var soil:=MeshInstance3D.new();var soil_mesh:=CylinderMesh.new();soil_mesh.top_radius=4.18;soil_mesh.bottom_radius=4.18;soil_mesh.height=.18;soil_mesh.radial_segments=64;soil.mesh=soil_mesh;soil.position.y=-.03;soil.material_override=_soil_material();pot_root.add_child(soil)
 
 func _mat(color: Color, rough: float, metallic: float) -> StandardMaterial3D:
 	var m:=StandardMaterial3D.new(); m.albedo_color=color; m.roughness=rough; m.metallic=metallic; return m
@@ -111,6 +126,7 @@ func _build_ui() -> void:
 	coin_label=Label.new(); coin_label.text=" ●  %s  ＋" % _comma(coins); coin_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; coin_label.add_theme_font_size_override("font_size",20); coin_label.add_theme_color_override("font_color",Color("#ffd85b")); coin_panel.add_child(coin_label)
 	for entry in [{"x":421,"t":"図鑑"},{"x":495,"t":"設定"}]:
 		var b:=Button.new(); b.text=entry.t; b.position=Vector2(entry.x,116); b.size=Vector2(68,73); _skin_button(b,Color("#fff0cf"),17); hud.add_child(b)
+	mode_button=Button.new();mode_button.text="原生地";mode_button.position=Vector2(465,202);mode_button.size=Vector2(98,45);_skin_button(mode_button,Color("#fff0cf"),15);mode_button.mouse_filter=Control.MOUSE_FILTER_STOP;mode_button.pressed.connect(_toggle_mode);hud.add_child(mode_button)
 	# lower gradient cards
 	var harvest:=Button.new(); harvest.text="タップで 収穫！"; harvest.position=Vector2(24,829); harvest.size=Vector2(360,121); _skin_button(harvest,Color("#caa538"),27); harvest.mouse_filter=Control.MOUSE_FILTER_IGNORE; hud.add_child(harvest)
 	record_card=PanelContainer.new(); record_card.position=Vector2(394,816); record_card.size=Vector2(164,134); record_card.add_theme_stylebox_override("panel",_box(Color("#674135"),Color("#f4d36e"),18,3)); record_card.visible=false; hud.add_child(record_card)
@@ -156,17 +172,13 @@ func _weighted_species()->Dictionary:
 	return species[0]
 
 func _find_spawn_position()->Vector3:
-	# Sample the entire annulus rather than choosing from reusable slots.  Keep
-	# the best of several candidates so 45 plants remain organic but readable.
+	# Uniformly sample the visible soil ellipse. No rows, slots, or equal spacing.
 	var best := Vector3.ZERO
 	var best_clearance := -1.0
 	for attempt in range(72):
 		var angle := rng.randf_range(0.0, TAU)
-		# sqrt gives an even ground-area distribution instead of a dense ring.
-		var near_radius := 4.7
-		var far_radius := 10.8
-		var radius := sqrt(lerp(near_radius * near_radius, far_radius * far_radius, rng.randf()))
-		var candidate := Vector3(sin(angle) * radius, -1.16 - (radius - near_radius) * .055, -cos(angle) * radius)
+		var radius := sqrt(rng.randf())
+		var candidate := Vector3(cos(angle)*3.55*radius,.12,sin(angle)*3.15*radius)
 		var clearance := 99.0
 		for plant in plants:
 			if is_instance_valid(plant): clearance = minf(clearance, candidate.distance_to(plant.original_pos))
@@ -175,7 +187,7 @@ func _find_spawn_position()->Vector3:
 		if clearance > best_clearance:
 			best = candidate
 			best_clearance = clearance
-		if clearance >= 1.18: return candidate
+		if clearance >= .82: return candidate
 	return best
 
 func _plant_label()->Label:
@@ -190,6 +202,25 @@ func _process(delta:float)->void:
 		spawn_timer-=delta
 		if spawn_timer<=0: spawn_queue-=1; spawn_plant(); spawn_timer=rng.randf_range(.35,.9)
 
+func _toggle_mode()->void:
+	current_mode="habitat" if current_mode=="greenhouse" else "greenhouse"
+	_apply_mode()
+
+func _apply_mode()->void:
+	if camera==null:return
+	var greenhouse_mode:=current_mode=="greenhouse"
+	greenhouse_layer.visible=greenhouse_mode
+	pot_root.visible=greenhouse_mode
+	habitat_environment.background_mode=Environment.BG_CANVAS if greenhouse_mode else Environment.BG_SKY
+	for p in plants:
+		if is_instance_valid(p):p.visible=greenhouse_mode;p.label.visible=false
+	if greenhouse_mode:
+		camera.position=Vector3(0,7.3,8.6);camera.look_at_from_position(camera.position,Vector3(0,-.2,0),Vector3.UP)
+	else:
+		camera.position=Vector3.ZERO;_apply_view_rotation()
+	if mode_button:
+		mode_button.text="原生地" if greenhouse_mode else "温室"
+
 func _resolve_crowding(_delta:float)->void:
 	# Sprite plants remain rooted at their spawn point. Natural overlap is less
 	# distracting than sliding a planted rosette around as it grows.
@@ -200,6 +231,10 @@ func _resolve_crowding(_delta:float)->void:
 			p.position.z = p.original_pos.z
 
 func _update_labels()->void:
+	if current_mode!="greenhouse":
+		for p in plants:
+			if is_instance_valid(p):p.label.visible=false
+		return
 	var occupied:Array[Rect2]=[]
 	var sorted:=plants.duplicate(); sorted.sort_custom(func(a,b):return a.position.z<b.position.z)
 	for p in sorted:
@@ -235,9 +270,10 @@ func _begin_pointer(screen_pos:Vector2)->void:
 
 func _drag_pointer(screen_pos:Vector2,relative:Vector2)->void:
 	pointer_travel+=relative.length();pointer_last=screen_pos
+	if current_mode!="habitat":return
 	# Direct manipulation: the panorama follows the finger in both axes.
-	view_yaw=fmod(view_yaw+relative.x*.052,360.0)
-	view_pitch=clamp(view_pitch+relative.y*.038,-13.0,9.0)
+	view_yaw=fmod(view_yaw+relative.x*.032,360.0)
+	view_pitch=clamp(view_pitch+relative.y*.024,-13.0,9.0)
 	_apply_view_rotation()
 
 func _end_pointer(screen_pos:Vector2)->void:
